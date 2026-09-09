@@ -5,6 +5,8 @@
  * rado e, quando succede, non è un problema (a differenza del parlato, mai
  * sovrapposto). Non testato con vitest (solo `Audio` reale nel browser).
  */
+import { assetUrl } from "../assetUrl.js";
+
 export type SfxName =
   | "mescolio"
   | "disposizione"
@@ -20,7 +22,7 @@ export type SfxName =
   | "passaggio_mano";
 
 function sfxUrl(name: SfxName): string {
-  return `/assets/audio/effetti/${name}.mp3`;
+  return assetUrl(`assets/audio/effetti/${name}.mp3`);
 }
 
 export interface SfxPlayer {

@@ -21,6 +21,7 @@ import { createNarrationPlayer } from "../narrationPlayer.js";
 import { createMusicPlayer } from "../musicPlayer.js";
 import { createSfxPlayer } from "../sfxPlayer.js";
 import { valueBand } from "../valueBand.js";
+import { assetUrl } from "../../assetUrl.js";
 import {
   HUMAN_DISPLAY_NAME,
   applyHumanAction,
@@ -117,7 +118,7 @@ export const renderGame: RouteRenderer = (container, params) => {
   const narrationPlayer = createNarrationPlayer(() => loadAppSettings(window.localStorage).volumes.narration / 100);
   const sfxPlayer = createSfxPlayer(() => loadAppSettings(window.localStorage).volumes.sfx / 100);
   const musicPlayer = createMusicPlayer(
-    "/assets/audio/musica/sottofondo.mp3",
+    assetUrl("assets/audio/musica/sottofondo.mp3"),
     () => loadAppSettings(window.localStorage).volumes.music / 100,
   );
   musicPlayer.start();

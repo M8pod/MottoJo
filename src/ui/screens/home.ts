@@ -1,4 +1,5 @@
 import type { RouteRenderer } from "../router.js";
+import { assetUrl } from "../../assetUrl.js";
 
 /**
  * Schermata iniziale (spec, sezione 6): nome del gioco, copertina, e i
@@ -12,7 +13,7 @@ export const renderHome: RouteRenderer = (container) => {
       <h1>Motto Jo</h1>
     </header>
     <main>
-      <img class="cover" src="/assets/immagini/copertina-motto-jo.png" alt="Logo di Motto Jo: una grande M verde menta cicciottosa dal contorno nero, con la parola Jo in corsivo giallo fluo sovrapposta alla sua gamba destra" />
+      <img class="cover" src="${assetUrl("assets/immagini/copertina-motto-jo.png")}" alt="Logo di Motto Jo: una grande M verde menta cicciottosa dal contorno nero, con la parola Jo in corsivo giallo fluo sovrapposta alla sua gamba destra" />
       <nav aria-label="Menu principale">
         <ul class="menu">
           <li><a href="#/game">Gioca subito</a></li>

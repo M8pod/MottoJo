@@ -180,7 +180,7 @@ a {
 }
 
 .pile-visual--back {
-  background-image: url("/assets/immagini/carte/carta_dorso.png");
+  background-image: var(--card-back-url);
 }
 
 .pile-visual--empty {
@@ -225,7 +225,7 @@ a {
 }
 
 .card-cell--covered {
-  background-image: url("/assets/immagini/carte/carta_dorso.png");
+  background-image: var(--card-back-url);
   background-size: cover;
   background-position: center;
 }
@@ -410,7 +410,7 @@ kbd.shortcut-hint {
 }
 
 .limb-peek--covered {
-  background-image: url("/assets/immagini/carte/carta_dorso.png");
+  background-image: var(--card-back-url);
   background-size: cover;
   background-position: center;
 }
