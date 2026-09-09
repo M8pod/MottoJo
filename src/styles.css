@@ -1,0 +1,444 @@
+/*
+ * Stile globale di Motto Jo. Pensato prima per chi non vede (VoiceOver +
+ * tastiera Bluetooth) e poi reso leggibile e riconoscibile anche per chi
+ * vede: ogni pulsante ha sempre un'etichetta di testo vera e visibile
+ * (le icone sono decorative, `aria-hidden`, mai l'unica informazione),
+ * i target di tocco sono grandi, il focus da tastiera è sempre visibile.
+ */
+
+:root {
+  /* Sfondo app: stesso colore già incluso nei pixel di copertina e dorso
+     carta (vedi nota di ripresa lavori) — mai ridefinirlo altrove. */
+  --color-bg-app: #221f1c;
+  --color-text-app: #f1e9d8;
+
+  /* Superfici leggermente più chiare dello sfondo, per pannelli/celle
+     coperte che devono restare visibili come forma anche sopra il nero. */
+  --color-surface-1: #2c2822;
+  --color-surface-2: #363129;
+
+  /* Pastiglia carta (uguale su ogni valore, spec sezione 5). */
+  --color-card-face: #f1e9d8;
+  --color-card-digit: #221f1c;
+
+  /* Fasce di valore (spec sezione 5). */
+  --band-slate: #2e3a4a;
+  --band-ivory: #f1e9d8;
+  --band-green: #4b6a43;
+  --band-gold: #c9a227;
+  --band-maroon: #5c1a2b;
+
+  /* Colore di messa a fuoco: lo stesso giallo fluo della mascotte, il
+     colore a massimo contrasto già in uso nell'app. Mai rimuovere il
+     focus senza sostituirlo con questo. */
+  --color-focus: #dfd71e;
+
+  --color-danger: #c0392b;
+  --color-success: #4b6a43;
+
+  --radius-card: 10px;
+  --radius-control: 10px;
+
+  font-size: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-bg-app);
+  color: var(--color-text-app);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  line-height: 1.4;
+}
+
+body {
+  padding-bottom: 3rem;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+h1,
+h2 {
+  line-height: 1.2;
+}
+
+.app-header {
+  padding: 1rem;
+  text-align: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+a {
+  color: var(--color-focus);
+}
+
+/* Focus da tastiera: sempre visibile, mai tolto. Un bordo spesso e un
+   colore che non si confonde con nessuna fascia di valore. */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.cover {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 1rem;
+}
+
+/* Striscia di stato partita: sempre in cima, sempre la stessa posizione,
+   così chi naviga con lo swipe/tastiera la trova sempre nello stesso
+   punto a ogni cambio turno. */
+.status-banner {
+  background: var(--color-surface-1);
+  border-radius: var(--radius-control);
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.turn-prompt {
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+/* --- Tavolo: mazzo coperto + scarti, uno accanto all'altro, ognuno un
+   pulsante grande che è insieme l'oggetto visivo E l'azione (pescare /
+   prendere) invece di un'icona più un testo separato altrove. --- */
+.pile-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.pile-button {
+  flex: 1 1 0;
+  max-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border: 2px solid rgba(241, 233, 216, 0.35);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+  color: var(--color-text-app);
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.pile-button:disabled {
+  cursor: default;
+}
+
+/* Il colore di fascia sul valore (e il dorso della carta) non deve mai
+   perdere leggibilità quando il pulsante è disabilitato: si sfuma solo
+   l'etichetta di testo sotto, la carta resta sempre a piena intensità. */
+.pile-button:disabled .pile-label {
+  opacity: 0.55;
+}
+
+.pile-visual {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  border: 2px solid rgba(241, 233, 216, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  background-size: cover;
+  background-position: center;
+}
+
+.pile-visual--back {
+  background-image: url("/assets/immagini/carte/carta_dorso.png");
+}
+
+.pile-visual--empty {
+  border-style: dashed;
+  color: rgba(241, 233, 216, 0.6);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.pile-sub {
+  display: block;
+  font-weight: 400;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* --- Il tuo Deck: griglia 4 colonne per 3 righe di carte-pulsante. --- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.card-row {
+  display: contents;
+}
+
+.card-cell {
+  aspect-ratio: 5 / 7;
+  border-radius: var(--radius-card);
+  border: 3px solid rgba(241, 233, 216, 0.35);
+  background: var(--color-surface-1);
+  color: var(--color-text-app);
+  font-size: 1.6rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.card-cell--covered {
+  background-image: url("/assets/immagini/carte/carta_dorso.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.card-cell--face-up {
+  background: var(--color-card-face);
+  color: var(--color-card-digit);
+}
+
+.card-cell--band-slate {
+  border-color: var(--band-slate);
+}
+.card-cell--band-ivory {
+  border-color: var(--band-slate);
+  /* la fascia avorio userebbe lo stesso colore della pastiglia: bordo più scuro per restare visibile */
+}
+.card-cell--band-green {
+  border-color: var(--band-green);
+}
+.card-cell--band-gold {
+  border-color: var(--band-gold);
+}
+.card-cell--band-maroon {
+  border-color: var(--band-maroon);
+}
+
+/* --- Barre di azione (pulsanti icona + etichetta), stesso stile per le
+   azioni principali di turno e per gli strumenti di esplorazione, solo
+   più piccoli i secondi (gerarchia visiva, non informativa: il testo
+   resta sempre leggibile allo stesso modo per chi ascolta). --- */
+.action-bar,
+.icon-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+
+/* Carta appena pescata: si vede subito cosa hai preso (il valore vero lo
+   dice anche la voce narrante e il messaggio di stato, questa è solo la
+   controparte visiva — perciò `aria-hidden`). */
+.drawn-card-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.drawn-card {
+  width: 4.5rem;
+  cursor: default;
+  flex: none;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-control);
+  border: 2px solid rgba(241, 233, 216, 0.35);
+  background: var(--color-surface-1);
+  color: var(--color-text-app);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--color-surface-2);
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.icon-btn--primary {
+  border-color: var(--color-focus);
+}
+
+.icon-btn--compact {
+  padding: 0.45rem 0.7rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.icon-btn .icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.icon-btn--compact .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Suggerimento di scorciatoia da tastiera: decorativo, sempre accanto a
+   un'etichetta di testo vera, mai al posto suo. */
+kbd.shortcut-hint {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(241, 233, 216, 0.4);
+  opacity: 0.75;
+  margin-left: 0.2rem;
+}
+
+.exploration-group {
+  margin: 0.5rem 0;
+}
+
+.exploration-group-label {
+  display: block;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-bottom: 0.3rem;
+}
+
+/* --- Log di narrazione: doppia funzione, sottotitoli per chi vede e
+   legge invece di ascoltare, e cronologia scorrevole per chi vuole
+   ripassare cosa è successo. --- */
+.narration-log {
+  max-height: 12rem;
+  overflow-y: auto;
+  background: var(--color-surface-1);
+  border-radius: var(--radius-control);
+  padding: 0.6rem 0.9rem;
+}
+
+.narration-log p {
+  margin: 0.3rem 0;
+}
+
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+}
+
+.icon-link .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* --- Braccio/zampa/gamba dell'avversario in turno (spec sezione 5):
+   puramente decorativa, mai l'unica fonte di informazione. `position: fixed`
+   rispetto al viewport (non alla pagina): resta ancorata al "bordo
+   inferiore dello schermo" vero anche se lo scroll cambia a metà
+   animazione (es. per il focus da tastiera). --- */
+.limb-figure {
+  position: fixed;
+  aspect-ratio: 0.55 / 1;
+  object-fit: contain;
+  object-position: bottom center;
+  pointer-events: none;
+  z-index: 50;
+  transition:
+    left 480ms ease-in-out,
+    top 480ms ease-in-out,
+    opacity 250ms ease-in-out;
+}
+
+.limb-peek {
+  position: fixed;
+  pointer-events: none;
+  z-index: 49;
+  border-radius: 6px;
+  border: 2px solid rgba(241, 233, 216, 0.5);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    left 480ms ease-in-out,
+    top 480ms ease-in-out,
+    opacity 200ms ease-in-out;
+}
+
+.limb-peek--covered {
+  background-image: url("/assets/immagini/carte/carta_dorso.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.limb-peek--value {
+  background: var(--color-card-face);
+  color: var(--color-card-digit);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .limb-figure,
+  .limb-peek {
+    transition:
+      opacity 150ms linear,
+      left 0s,
+      top 0s;
+  }
+}
+
+.pile-visual--flash {
+  animation: pile-flash 700ms ease-out;
+}
+
+@keyframes pile-flash {
+  0% {
+    box-shadow: 0 0 0 4px var(--color-focus);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}

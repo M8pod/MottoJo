@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Bozze/scarti di immagini generate durante la sperimentazione: non fanno
+# parte degli asset finali dell'app (quelli sono in assets/immagini/).
+Immagini da testare/
