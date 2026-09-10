@@ -1,38 +1,67 @@
 import { pauseDurationMs, tokenAudioUrl } from "../narration/audioAssets.js";
 import type { NarrationToken } from "../narration/tokens.js";
+import { createGainControlledAudio, type GainControlledAudio } from "./webAudioGain.js";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function playClip(url: string, volume: number): Promise<void> {
+/** Tempo massimo di attesa per un frammento prima di rinunciare e passare
+ * oltre. Senza questo, un frammento che il browser non porta mai né a
+ * "ended" né a "error" (osservato su sessioni di gioco lunghe, probabile
+ * esaurimento dei decoder audio del browser) blocca la coda per sempre: il
+ * bug segnalato dall'utente, "dopo un po' la voce del presentatore smette di
+ * parlare". Il riuso dei due elementi qui sotto (invece di un `new Audio()`
+ * per ogni frammento, come prima) riduce già molto la probabilità che
+ * succeda, questo timeout è la rete di sicurezza per quando succede lo
+ * stesso. */
+const CLIP_TIMEOUT_MS = 8000;
+
+function playOn(controlled: GainControlledAudio, volume: number, url: string): Promise<void> {
   return new Promise((resolve) => {
-    const audio = new Audio(url);
-    audio.volume = Math.min(1, Math.max(0, volume));
-    const done = () => {
-      audio.removeEventListener("ended", done);
-      audio.removeEventListener("error", onError);
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      controlled.element.removeEventListener("ended", onEnded);
+      controlled.element.removeEventListener("error", onError);
+      window.clearTimeout(timeoutId);
       resolve();
     };
+    const onEnded = () => finish();
     const onError = () => {
       console.warn(`Frammento audio non riproducibile: ${url}`);
-      done();
+      finish();
     };
-    audio.addEventListener("ended", done);
-    audio.addEventListener("error", onError);
-    void audio.play().catch(onError);
+    const timeoutId = window.setTimeout(finish, CLIP_TIMEOUT_MS);
+    controlled.element.addEventListener("ended", onEnded);
+    controlled.element.addEventListener("error", onError);
+    controlled.setVolume(volume);
+    void controlled.element.play().catch(onError);
   });
 }
 
-async function playTokens(tokens: readonly NarrationToken[], getVolume: () => number): Promise<void> {
+type NarrationStep = { readonly kind: "clip"; readonly url: string } | { readonly kind: "pause"; readonly ms: number };
+
+function toSteps(tokens: readonly NarrationToken[]): NarrationStep[] {
+  const steps: NarrationStep[] = [];
   for (const token of tokens) {
     if (token.kind === "pause") {
-      await sleep(pauseDurationMs(token.mark));
+      steps.push({ kind: "pause", ms: pauseDurationMs(token.mark) });
       continue;
     }
     const url = tokenAudioUrl(token);
-    if (url) await playClip(url, getVolume());
+    if (url) steps.push({ kind: "clip", url });
   }
+  return steps;
+}
+
+function nextClipUrl(steps: readonly NarrationStep[], from: number): string | null {
+  for (let i = from; i < steps.length; i += 1) {
+    const step = steps[i]!;
+    if (step.kind === "clip") return step.url;
+  }
+  return null;
 }
 
 export interface NarrationPlayer {
@@ -50,17 +79,54 @@ export interface NarrationPlayer {
  * invece che accavallarsi. `getVolume` è letto a ogni frammento (non solo
  * alla creazione) così un cambio del volume nell'Extra si sente dalla
  * prossima partita senza dover ricreare il player.
+ *
+ * Due elementi audio alternati, creati una volta sola e riusati per tutta la
+ * partita (invece di uno nuovo per frammento): mentre il primo sta ancora
+ * suonando, il secondo viene già caricato col frammento successivo, così
+ * quando il primo finisce il secondo può partire subito invece di aspettare
+ * rete/decodifica — i "momenti di vuoto" tra frammenti incollati segnalati
+ * dall'utente. Riusare solo due elementi invece di crearne sempre di nuovi
+ * evita anche di esaurire i decoder audio del browser su una partita lunga
+ * (vedi CLIP_TIMEOUT_MS sopra).
  */
 export function createNarrationPlayer(getVolume: () => number = () => 1): NarrationPlayer {
   const queue: (readonly NarrationToken[])[] = [];
   let running = false;
+  const players: [GainControlledAudio, GainControlledAudio] = [createGainControlledAudio(), createGainControlledAudio()];
+  let activeIndex = 0;
+
+  async function playTokens(tokens: readonly NarrationToken[]): Promise<void> {
+    const steps = toSteps(tokens);
+    const firstUrl = nextClipUrl(steps, 0);
+    if (firstUrl) {
+      const preload = players[activeIndex]!.element;
+      preload.src = firstUrl;
+      preload.load();
+    }
+    for (let i = 0; i < steps.length; i += 1) {
+      const step = steps[i]!;
+      if (step.kind === "pause") {
+        await sleep(step.ms);
+        continue;
+      }
+      const controlled = players[activeIndex]!;
+      activeIndex = activeIndex === 0 ? 1 : 0;
+      const upcoming = nextClipUrl(steps, i + 1);
+      if (upcoming) {
+        const preload = players[activeIndex]!.element;
+        preload.src = upcoming;
+        preload.load();
+      }
+      await playOn(controlled, getVolume(), step.url);
+    }
+  }
 
   async function drain(): Promise<void> {
     if (running) return;
     running = true;
     while (queue.length > 0) {
       const next = queue.shift()!;
-      await playTokens(next, getVolume);
+      await playTokens(next);
     }
     running = false;
   }

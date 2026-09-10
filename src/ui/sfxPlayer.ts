@@ -6,6 +6,7 @@
  * sovrapposto). Non testato con vitest (solo `Audio` reale nel browser).
  */
 import { assetUrl } from "../assetUrl.js";
+import { createGainControlledAudio, type GainControlledAudio } from "./webAudioGain.js";
 
 export type SfxName =
   | "mescolio"
@@ -29,14 +30,27 @@ export interface SfxPlayer {
   play(name: SfxName): void;
 }
 
+/** Pool di pochi elementi audio riusati a turno, invece di un `new Audio()`
+ * per ogni suono: su una partita lunga, con effetti che suonano a ogni mossa,
+ * centinaia di elementi mai riutilizzati finivano per esaurire i decoder
+ * audio del browser (stesso bug, per lo stesso motivo, che ammutoliva la
+ * voce narrante — vedi narrationPlayer.ts). Un pool piccolo basta perché al
+ * massimo pochi suoni sono davvero simultanei. */
+const POOL_SIZE = 6;
+
 export function createSfxPlayer(getVolume: () => number): SfxPlayer {
+  const pool: GainControlledAudio[] = Array.from({ length: POOL_SIZE }, () => createGainControlledAudio());
+  let next = 0;
+
   return {
     play(name) {
       const volume = getVolume();
       if (volume <= 0) return;
-      const audio = new Audio(sfxUrl(name));
-      audio.volume = Math.min(1, Math.max(0, volume));
-      void audio.play().catch(() => {
+      const controlled = pool[next]!;
+      next = (next + 1) % pool.length;
+      controlled.setVolume(volume);
+      controlled.element.src = sfxUrl(name);
+      void controlled.element.play().catch(() => {
         // Riproduzione bloccata (es. nessuna interazione utente ancora avvenuta
         // nella pagina): non è un errore da segnalare, semplicemente quel
         // suono non parte questa volta.

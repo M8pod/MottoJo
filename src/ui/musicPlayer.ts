@@ -1,3 +1,5 @@
+import { createGainControlledAudio, type GainControlledAudio } from "./webAudioGain.js";
+
 /**
  * Musica di sottofondo (spec, sezione 6): un solo loop per la v1 (scelta
  * concordata con l'utente al posto delle "fino a tre tracce" originali).
@@ -5,8 +7,14 @@
  * convenzione già usata per narrazione ed effetti: un cambio dal volume
  * nell'Extra si sente dalla prossima volta che si entra in partita, non
  * serve tenerlo sincronizzato in tempo reale mentre suona (le due schermate
- * non sono mai visibili insieme). Non testato con vitest (solo `Audio`
- * reale nel browser).
+ * non sono mai visibili insieme).
+ *
+ * Il volume passa da un GainNode (`webAudioGain.ts`), non dalla proprietà
+ * `volume` dell'elemento audio: su iOS Safari quella proprietà viene
+ * ignorata di proposito da Apple, quindi il cursore "Musica di sottofondo"
+ * in Extra non aveva alcun effetto reale lì (bug segnalato dall'utente — la
+ * musica restava sempre allo stesso volume alto). Non testato con vitest
+ * (solo `Audio` reale nel browser).
  */
 export interface MusicPlayer {
   start(): void;
@@ -14,24 +22,25 @@ export interface MusicPlayer {
 }
 
 export function createMusicPlayer(url: string, getVolume: () => number): MusicPlayer {
-  let audio: HTMLAudioElement | null = null;
+  let controlled: GainControlledAudio | null = null;
 
   return {
     start() {
-      if (audio) return;
+      if (controlled) return;
       const volume = getVolume();
       if (volume <= 0) return; // spec: 0 = musica disattivata del tutto, richiesta esplicita dell'utente.
-      audio = new Audio(url);
-      audio.loop = true;
-      audio.volume = Math.min(1, Math.max(0, volume));
-      void audio.play().catch(() => {
+      controlled = createGainControlledAudio();
+      controlled.setVolume(volume);
+      controlled.element.src = url;
+      controlled.element.loop = true;
+      void controlled.element.play().catch(() => {
         // Riproduzione bloccata (nessuna interazione utente ancora avvenuta): non è un errore da segnalare.
       });
     },
     stop() {
-      if (!audio) return;
-      audio.pause();
-      audio = null;
+      if (!controlled) return;
+      controlled.element.pause();
+      controlled = null;
     },
   };
 }

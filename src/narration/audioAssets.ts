@@ -67,14 +67,16 @@ export function tokenAudioUrl(token: NarrationToken, rng: () => number = Math.ra
   }
 }
 
-/** Durata (ms) della pausa silenziosa per ogni segno: una breve cesura naturale tra frammenti incollati al volo. */
+/** Durata (ms) della pausa silenziosa per ogni segno: una breve cesura naturale tra frammenti incollati al volo.
+ * Accorciate rispetto alla versione precedente (150/250/450) su segnalazione dell'utente: la narrazione
+ * risultava ancora un po' lenta a unire i frammenti tra loro. */
 export function pauseDurationMs(mark: "." | "," | ":"): number {
   switch (mark) {
     case ",":
-      return 150;
+      return 100;
     case ":":
-      return 250;
+      return 180;
     case ".":
-      return 450;
+      return 300;
   }
 }
