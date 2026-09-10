@@ -14,6 +14,11 @@ export interface Volumes {
   readonly narration: number;
 }
 
+/** Velocità dell'animazione braccio/zampa/gamba dell'avversario in turno (spec sezione 5):
+ * l'utente ha segnalato il movimento di default troppo veloce da notare — "lenta" è ora il
+ * default, "veloce" resta disponibile per chi la preferisce più rapida (src/ui/limbAnimation.ts). */
+export type LimbAnimationSpeed = "lenta" | "veloce";
+
 export interface AppSettings {
   /** Testo libero, mai pronunciato dalla voce narrante (spec, sezione "Extra"): solo per visualizzazione e riepiloghi. */
   readonly humanPlayerName: string;
@@ -22,6 +27,7 @@ export interface AppSettings {
   readonly email: string;
   readonly podcastUrl: string;
   readonly donationUrl: string;
+  readonly limbAnimationSpeed: LimbAnimationSpeed;
 }
 
 export function defaultAppSettings(): AppSettings {
@@ -34,6 +40,7 @@ export function defaultAppSettings(): AppSettings {
     // Preso dalla pagina "Supporto" di mottopodcast.org (connettore WordPress.com,
     // su richiesta esplicita dell'utente) — non un URL inventato qui.
     donationUrl: "https://www.paypal.me/MottoPodcast",
+    limbAnimationSpeed: "lenta",
   };
 }
 
@@ -63,7 +70,13 @@ export function loadAppSettings(storage: ConfigStorage): AppSettings {
   if (raw === null) return defaultAppSettings();
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isAppSettings(parsed) ? parsed : defaultAppSettings();
+    if (!isAppSettings(parsed)) return defaultAppSettings();
+    // `limbAnimationSpeed` è un campo aggiunto dopo: non richiesto da
+    // `isAppSettings` apposta, così le impostazioni salvate prima della sua
+    // introduzione restano valide (nome, volumi, bio...) invece di essere
+    // scartate in blocco — qui si applica solo il default mancante.
+    const limbAnimationSpeed = parsed.limbAnimationSpeed === "veloce" ? "veloce" : "lenta";
+    return { ...parsed, limbAnimationSpeed };
   } catch {
     return defaultAppSettings();
   }

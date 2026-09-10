@@ -90,6 +90,10 @@ Roberto, Elena, Lorenzo, Martina, Graziano, Marco, Roger, Alessandro, Aurora.
 | `il_tuo_deck` | "il tuo Deck" |
 | `ora_ascolti` | "Ora ascolti" |
 | `hai_pescato` | "Hai pescato," — annuncia in automatico al giocatore umano quale carta ha appena pescato dal mazzo coperto (prima che scelga se tenerla o scartarla), unica eccezione alla regola "il turno umano non si narra mai": qui non si narra una decisione, solo un fatto (il valore pescato) che altrimenti sarebbe visibile solo a schermo. File: `assets/audio/frammenti/connettivi/hai_pescato.mp3`, stessa voce e convenzione (virgola finale) di tutti gli altri connettivi. |
+| `parola_punti` | "punti" — si incolla dopo un numero di punteggio ovunque il narratore annunci un totale (pulsante "somma punti", sezione 3.6; annuncio di chi inizia la manche, sezione 3.11), così non resta solo il numero nudo. Nessuna virgola/punto: la pausa finale è sempre il `pause(".")` del chiamante. |
+| `inizia_manche` | "Inizia" — apre l'annuncio di chi inizia la manche quando è un avversario, si incolla al nome (sezione 3.11). |
+| `inizia_manche_tu` | "Inizi tu," — stessa apertura, forma alla seconda persona quando inizia il giocatore umano (mai il nome, regola trasversale). |
+| `inizio_con` | "con" — si incolla al numero di punti nell'annuncio di chi inizia la manche (sezione 3.11). |
 
 ### 1.4 Numeri generici (punteggi)
 
@@ -115,6 +119,7 @@ unica poi tagliata.
 | --- | --- |
 | `motto_jo` | "Motto Gioooooo!" (grafia fonetica: "Gio" invece di "Jo" perché una voce italiana potrebbe leggere "Jo" con un suono sbagliato; da recitare con grande enfasi). **Generato**: 3 take scelti dall'utente dopo ascolto (`assets/audio/frasi_fisse/motto_jo/gioooo__trionfante_risata.mp3`, `jo__grido_entusiasta.mp3`, `jo__trionfante_risata.mp3`) — a differenza di ogni altro frammento/frase (una sola registrazione), qui si tengono 3 varianti apposta: a runtime, ogni volta che scatta l'evento "colonna annullata" (sezione 3.3), se ne sceglie una a caso, per non far sentire sempre la stessa esclamazione nelle partite con molte colonne completate. Meccanismo di scelta random da implementare nel codice insieme al punto 8 (schermata di gioco), come il resto della riproduzione audio. |
 | `tocca_a_te` | "Tocca a te." **Generato**: `assets/audio/frasi_fisse/tocca_a_te.mp3`. |
+| `invito_scopri_due` | "Scopri due carte del tuo Deck per iniziare." — recitata una volta a ogni inizio manche (mai su una partita ripresa alla stessa manche), subito dopo gli effetti "Mescolio"/"Disposizione": senza VoiceOver attivo, chi gioca non aveva altrimenti nessun indizio su cosa fare a inizio manche (bug segnalato dall'utente). File: `assets/audio/frasi_fisse/invito_scopri_due.mp3`. |
 
 ## 3. Modelli di frase completi
 
@@ -169,8 +174,12 @@ umano per definizione (non serve mai il nome).
 ### 3.6 Punteggio a richiesta (pulsante "somma punti", non automatico)
 
 - Deck di un avversario: "Punti dalle carte scoperte, {nome}: totale
-  {somma}."
-- Proprio Deck: "Punti dalle tue carte scoperte: totale {somma}."
+  {somma} punti."
+- Proprio Deck: "Punti dalle tue carte scoperte: totale {somma} punti."
+
+(La parola "punti" dopo il numero è stata aggiunta dopo che l'utente ha
+segnalato che sentire solo il numero nudo, senza l'unità di misura, non
+era chiaro.)
 
 ### 3.7 Cambio Deck in ascolto (punto 5)
 
@@ -200,7 +209,27 @@ con la convenzione "riga prima, colonna dopo" già fissata.
 Intestazione ("Deck di {nome}." o "Il tuo Deck.") seguita dalla lettura di
 ogni riga (punto 3.9) in sequenza, dalla prima all'ultima.
 
-### 3.11 Regola anti-imbroglio (punto 5)
+### 3.11 Chi inizia la manche, con quanti punti scoperti
+
+Dopo che tutti (avversari virtuali in automatico, giocatore umano coi
+propri due clic) hanno scoperto le due carte iniziali, il narratore annuncia
+chi gioca per primo e la somma delle sue due carte appena scoperte — senza,
+chi non usa VoiceOver non aveva alcun modo di sapere che la manche era
+davvero iniziata né chi tocca per primo (bug segnalato dall'utente).
+
+- Avversario: "Inizia {nome}, con {somma} punti."
+- Giocatore umano: "Inizi tu, con {somma} punti." (mai il nome, regola
+  trasversale)
+
+Riusa lo stesso frammento `parola_punti` di 3.6. Nella prima manche la somma
+è quella dei due valori scoperti (che determina anche chi parte, per
+regola); nelle manche successive chi parte è sempre chi ha chiuso la manche
+precedente (invariato), ma la frase annuncia comunque i punti delle due
+carte appena scoperte in questa manche, non il punteggio della manche
+precedente — è l'informazione disponibile nello stesso istante in cui la
+fase di gioco comincia davvero.
+
+### 3.12 Regola anti-imbroglio (punto 5)
 
 Le funzioni di lettura (3.7-3.10) accettano solo la vista pubblica del Deck
 (`PublicGrid`, la stessa usata dai profili IA — sezione vista in

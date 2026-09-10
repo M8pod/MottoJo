@@ -47,6 +47,21 @@ export const renderExtra: RouteRenderer = (container) => {
       </fieldset>
 
       <fieldset>
+        <legend>Animazione avversari</legend>
+        <p>Velocità del braccio/zampa/gamba che pesca e sposta le carte durante il turno di un avversario.</p>
+        <p>
+          <label>
+            <input type="radio" name="limb-speed" value="lenta" ${settings.limbAnimationSpeed === "lenta" ? "checked" : ""} />
+            Lenta (consigliata, più facile da notare)
+          </label><br />
+          <label>
+            <input type="radio" name="limb-speed" value="veloce" ${settings.limbAnimationSpeed === "veloce" ? "checked" : ""} />
+            Veloce
+          </label>
+        </p>
+      </fieldset>
+
+      <fieldset>
         <legend>Chi sono / contatti</legend>
         <p>
           <label for="bio">Breve biografia</label><br />
@@ -152,6 +167,13 @@ export const renderExtra: RouteRenderer = (container) => {
       const label = container.querySelector<HTMLLabelElement>(`label[for="${input.id}"]`)!;
       const suffix = key === "music" ? " — a 0 la musica è disattivata del tutto" : "";
       label.textContent = `${volumeLabels[key]} (${value}%)${suffix}`;
+    });
+  });
+
+  container.querySelectorAll<HTMLInputElement>('input[name="limb-speed"]').forEach((input) => {
+    input.addEventListener("change", (e) => {
+      const value = (e.target as HTMLInputElement).value === "veloce" ? "veloce" : "lenta";
+      persist({ ...settings, limbAnimationSpeed: value });
     });
   });
 

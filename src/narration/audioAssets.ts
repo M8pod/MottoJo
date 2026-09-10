@@ -44,6 +44,9 @@ export function phraseAudioUrl(key: PhraseKey, rng: () => number = Math.random):
   if (key === "tocca_a_te") {
     return assetUrl("assets/audio/frasi_fisse/tocca_a_te.mp3");
   }
+  if (key === "invito_scopri_due") {
+    return assetUrl("assets/audio/frasi_fisse/invito_scopri_due.mp3");
+  }
   const ext = CONNETTIVI_EXTENSION_OVERRIDES[key] ?? "mp3";
   return assetUrl(`assets/audio/frammenti/connettivi/${key}.${ext}`);
 }

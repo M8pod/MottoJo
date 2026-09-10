@@ -40,6 +40,7 @@ describe("loadAppSettings / saveAppSettings", () => {
       email: "marta@example.com",
       podcastUrl: "https://example.com/podcast",
       donationUrl: "https://paypal.me/marta",
+      limbAnimationSpeed: "veloce",
     };
     saveAppSettings(storage, settings);
     expect(loadAppSettings(storage)).toEqual(settings);
@@ -53,6 +54,17 @@ describe("loadAppSettings / saveAppSettings", () => {
     const invalid = memoryStorage();
     invalid.setItem("motto-jo:app-settings", JSON.stringify({ humanPlayerName: "Marta" }));
     expect(loadAppSettings(invalid)).toEqual(defaultAppSettings());
+  });
+
+  it("impostazioni salvate prima dell'introduzione di limbAnimationSpeed restano valide (default 'lenta' applicato, resto preservato)", () => {
+    const storage = memoryStorage();
+    const { limbAnimationSpeed: _omit, ...withoutSpeed } = defaultAppSettings();
+    storage.setItem("motto-jo:app-settings", JSON.stringify({ ...withoutSpeed, humanPlayerName: "Marta" }));
+    expect(loadAppSettings(storage)).toEqual({
+      ...defaultAppSettings(),
+      humanPlayerName: "Marta",
+      limbAnimationSpeed: "lenta",
+    });
   });
 });
 

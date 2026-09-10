@@ -1,4 +1,4 @@
-import type { ColumnClearedEvent, RoundClosedEvent, RoundEvent, MoveEvent } from "../state/types.js";
+import type { ColumnClearedEvent, PlayingStartedEvent, RoundClosedEvent, RoundEvent, MoveEvent } from "../state/types.js";
 import { name, number, pause, score, text, type NarrationToken } from "./tokens.js";
 
 export type Verbosity = "essenziale" | "dettagliata";
@@ -106,6 +106,14 @@ function narrateRoundClosed(event: RoundClosedEvent, ctx: NarrationContext): Nar
     : [name(ctx.playerName(event.playerIndex)), text("chiusura_scopre_ultima")];
 }
 
+/** A inizio manche, dopo che tutti hanno scoperto le due carte iniziali: chi inizia e con quanti punti scoperti. */
+function narratePlayingStarted(event: PlayingStartedEvent, ctx: NarrationContext): NarrationToken[] {
+  const openingTokens: NarrationToken[] = ctx.isHuman(event.playerIndex)
+    ? [text("inizia_manche_tu")]
+    : [text("inizia_manche"), name(ctx.playerName(event.playerIndex)), pause(",")];
+  return [...openingTokens, text("inizio_con"), score(event.points), text("parola_punti"), pause(".")];
+}
+
 /**
  * Genera i token da narrare per un evento della manche, o null se quell'evento
  * non va narrato automaticamente (scoperta iniziale; turno del giocatore umano).
@@ -122,13 +130,23 @@ export function narrateEvent(event: RoundEvent, ctx: NarrationContext): Narratio
       return narrateRoundClosed(event, ctx);
     case "handoff-to-human":
       return [text("tocca_a_te")];
+    case "playing-started":
+      return narratePlayingStarted(event, ctx);
   }
 }
 
 /** Frase del pulsante "somma punti": self-referenziale sul proprio Deck, con nome su quello altrui. */
 export function narrateScoreQuery(playerName: string | null, total: number): NarrationToken[] {
   if (playerName === null) {
-    return [text("punti_propri"), text("totale"), score(total), pause(".")];
+    return [text("punti_propri"), text("totale"), score(total), text("parola_punti"), pause(".")];
   }
-  return [text("punti_altrui"), name(playerName), pause(":"), text("totale"), score(total), pause(".")];
+  return [
+    text("punti_altrui"),
+    name(playerName),
+    pause(":"),
+    text("totale"),
+    score(total),
+    text("parola_punti"),
+    pause("."),
+  ];
 }

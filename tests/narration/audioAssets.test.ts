@@ -23,7 +23,7 @@ function assetExists(url: string): boolean {
 describe("phraseAudioUrl", () => {
   it("ogni connettivo del vocabolario fisso ha un file audio esistente sul disco", () => {
     for (const key of Object.keys(PHRASES) as PhraseKey[]) {
-      if (key === "motto_jo" || key === "tocca_a_te") continue; // frasi fisse, gestite a parte sotto
+      if (key === "motto_jo" || key === "tocca_a_te" || key === "invito_scopri_due") continue; // frasi fisse, gestite a parte sotto
       const url = phraseAudioUrl(key);
       expect(assetExists(url), `manca il file per "${key}": ${url}`).toBe(true);
     }
@@ -37,6 +37,12 @@ describe("phraseAudioUrl", () => {
   it("tocca_a_te punta al file unico nelle frasi fisse", () => {
     const url = phraseAudioUrl("tocca_a_te");
     expect(url).toBe("/assets/audio/frasi_fisse/tocca_a_te.mp3");
+    expect(assetExists(url)).toBe(true);
+  });
+
+  it("invito_scopri_due punta al file unico nelle frasi fisse", () => {
+    const url = phraseAudioUrl("invito_scopri_due");
+    expect(url).toBe("/assets/audio/frasi_fisse/invito_scopri_due.mp3");
     expect(assetExists(url)).toBe(true);
   });
 

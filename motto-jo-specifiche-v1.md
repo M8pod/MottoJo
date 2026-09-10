@@ -1,6 +1,124 @@
 # Motto Jo — Specifiche v1
 
-## Nota di ripresa lavori (aggiornata 2026-09-10, ultimissima: set di icone dell'app)
+## Nota di ripresa lavori (aggiornata 2026-09-10, sessione bug post-prova utente)
+
+L'utente ha giocato una partita vera e segnalato 7 problemi/migliorie in un
+colpo solo. Trattati così:
+
+1. **Motto Jo non cancellava la colonna, anzi ne duplicava una a destra —
+   risolto.** Il motore (`checkAndClearMatchingColumns`,
+   `src/engine/grid.ts`) era corretto: rimuove davvero la colonna dal Deck e
+   fa slittare le successive, già testato. Il bug era solo nella schermata
+   di gioco (`src/ui/screens/game.ts`): il rendering di griglia propria e
+   "Deck in ascolto" ciclava sempre su `GRID_COLUMNS` (4) fisso invece che
+   sulla lunghezza reale del Deck, quindi dopo un Motto Jo andava fuori
+   indice — l'eccezione interrompeva il rendering a metà lasciando l'ultima
+   colonna con il valore vecchio non aggiornato (da qui "si duplica").
+   Corrette `renderOwnGridCell`/`renderListenGridCells` (colonne oltre la
+   lunghezza reale nascoste con la nuova classe `.card-cell--removed`,
+   `visibility: hidden`, mai lasciate col contenuto stantio), navigazione da
+   tastiera (`setFocusedCell`/`setListenFocusedCell`, frecce e Home/End) e
+   click, perché non puntino più a colonne rimosse. `npm run typecheck` e
+   `npm test` puliti; non verificato dal vivo in un browser per un problema
+   con la skill `claude-in-chrome` (si è bloccata a metà verifica, interrotta
+   dall'utente — vedi memoria `feedback_claude_in_chrome_hangs`), fiducia
+   riposta nella lettura attenta del codice invece.
+
+2. **Animazione braccio/zampa/gamba troppo veloce — rallentata di default,
+   più un'impostazione veloce/lenta.** Nuovo campo `limbAnimationSpeed`
+   ("lenta" default, "veloce") in `AppSettings`
+   (`src/setup/appSettings.ts`), migrazione tollerante per non perdere le
+   impostazioni salvate prima della sua introduzione (nome/volumi/bio
+   restano, solo il campo mancante prende il default). Nuovo controllo a
+   radio in Extra ("Animazione avversari"). `createLimbAnimator`
+   (`src/ui/limbAnimation.ts`) ora accetta la velocità e scala sia le attese
+   JS sia le transizioni CSS (nuove custom property `--limb-move-ms`/
+   `--limb-opacity-ms` scritte inline sugli elementi, referenziate da
+   `src/styles.css`) con lo stesso moltiplicatore, così il rallentamento è
+   coerente su tutta l'animazione (non solo pause più lunghe a inizio/fine
+   corsa). "lenta" = 1.6× i valori originari, "veloce" = 0.9× (leggermente
+   più rapida dell'originale, per chi la preferisce così). Effetto dalla
+   prossima apertura della schermata di gioco, stessa convenzione dei
+   volumi.
+
+3. **Onboarding a inizio manche — chi non usa VoiceOver non sapeva cosa
+   fare.** Due aggiunte:
+   - Nuova frase fissa `invito_scopri_due` ("Scopri due carte del tuo Deck
+     per iniziare."), recitata una volta a ogni inizio manche (mai su una
+     partita ripresa alla stessa manche — stesso guard `sfxPlayedForRound`
+     già usato per gli effetti "Mescolio"/"Disposizione", in
+     `maybePlayRoundStartSfx`, `src/ui/screens/game.ts`).
+   - Nuovo evento di motore `playing-started` (`src/state/types.ts`,
+     pushato da `tryStartPlayingPhase` in `src/state/round.ts` col
+     `playerIndex` di chi inizia e la somma delle sue due carte appena
+     scoperte, via `sumFaceUpValues` già esistente) narrato automaticamente
+     come tutti gli altri eventi (`narratePlayingStarted`,
+     `src/narration/narrate.ts`): "Inizia {nome}, con {N} punti." per un
+     avversario, "Inizi tu, con {N} punti." per l'umano (mai il nome, regola
+     trasversale). Vedi `motto-jo-frasi-narrazione.md` sezione 3.11.
+
+4. **La parola "punti" dopo il numero — aggiunta ovunque il narratore
+   annuncia un totale.** Nuovo frammento `parola_punti` ("punti"), inserito
+   dopo `score(total)` sia in `narrateScoreQuery` (pulsante "somma punti",
+   sezione 3.6) sia nel nuovo annuncio di inizio manche (punto 3 sopra) — un
+   numero nudo senza unità non era chiaro. Test aggiornati di conseguenza
+   (`tests/narration/narrate.test.ts`, `tests/exploration/read.test.ts`).
+
+5. **VoiceOver: punti elenco letti prima di ogni pulsante — risolti.**
+   Nessun `.menu`/`.opponent-list`/lista scarti aveva `list-style: none`:
+   Safari + VoiceOver annuncia "punto elenco" per ogni `<li>` con marker
+   visibile di default, un passaggio in più inutile prima del nome del
+   controllo. Aggiunta una regola in `src/styles.css` che azzera
+   `list-style`/margin/padding su tutte le liste di controlli
+   (`.menu`, `.opponent-list`, nuova classe `.music-track-list` sulla
+   seconda lista di "Scegli gli avversari", `#in-progress-list`,
+   `#completed-list`). **La lettera "V" dopo il nome del gioco non
+   riprodotta**: l'unico `<img>` della schermata iniziale
+   (`src/ui/screens/home.ts`) ha già un `alt` lungo e descrittivo ("Logo di
+   Motto Jo: una grande M verde menta...") — esattamente quello che l'utente
+   ha chiesto come etichetta, già presente in codice. Nessun'altra immagine
+   o contenuto generato via CSS nell'app che possa spiegare una "V" isolata.
+   Ipotesi: build/cache non aggiornata al momento della prova, o schermata
+   diversa da quella iniziale. **Da verificare di nuovo con l'utente dopo
+   questa sessione** — se sente ancora la "V", serve un secondo giro con più
+   dettagli (quale schermata esattamente, prima/dopo quale elemento).
+
+6. **Frammenti audio dei connettivi con troppo silenzio prima/dopo —
+   rifatti tutti.** L'utente aveva iniziato a tagliarne alcuni a mano
+   (6 file già modificati a inizio sessione); rifatta l'intera cartella
+   `assets/audio/frammenti/connettivi/` (29 mp3 + `art_un.wav`, tutti e 30)
+   con un taglio di silenzio iniziale/finale automatico, lasciando intatte
+   le pause naturali interne alle frasi più lunghe. Verificato dopo il
+   fatto con `ffmpeg-static` (installato temporaneamente, non salvato in
+   `package.json` — stessa convenzione già in uso per Playwright in
+   sessioni precedenti): durate finali sane (0.2-3.5s a seconda del
+   frammento), nessun file a durata sospetta/azzerata, nessun silenzio
+   residuo a inizio o fine traccia in un campione con `silencedetect`.
+
+7. **Le 5 nuove clip vocali necessarie ai punti 3-4 (`parola_punti`,
+   `inizia_manche`, `inizia_manche_tu`, `inizio_con`, `invito_scopri_due`)
+   — generate con ElevenLabs e sul disco.** Stessa voce/modello di tutto il
+   resto (`voice_id QZ4YsXHfl8zZccXKHAFZ`, "Presentatore",
+   `eleven_multilingual_v2`, una sola generazione a testa, flow "Motto Jo -
+   Connettivi" `Pmzm4prI9apbNgPMVNNL` riusato), stesso taglio automatico del
+   silenzio iniziale/finale del punto 6 applicato anche a questi 5. Un primo
+   tentativo di delegare la generazione a un agente in background si è
+   perso in una catena di sub-delega senza produrre i file (nessun danno,
+   solo tempo perso: fermato e rifatto in prima persona). **Non verificate
+   con trascrizione automatica** (a differenza di alcuni frammenti storici
+   con problemi di pronuncia — "un" letto "undo", "colonna" con accento
+   spagnolo — qui sono parole semplici e comuni, rischio basso): l'utente,
+   pur non vedente, sente benissimo l'audio da sé — vale la pena un
+   ascolto suo quando possibile, specialmente su "Inizia"/"Inizi tu," mai
+   provate prima d'ora.
+
+8. **Push su GitHub e sito pubblicato**: l'utente non può usare comodamente
+   l'interfaccia GitHub (non vedente) e ha chiesto esplicitamente di
+   occuparmene io da qui in avanti. Fatto in questa sessione: vedi la nuova
+   nota più sotto.
+
+`npm run typecheck` pulito. `npm test`: 196/196 puliti (i 2 che erano rossi
+in attesa dei file audio del punto 7 ora passano).
 
 **Set di icone dell'app — creato e collegato.** Su richiesta ("crea tutto il
 set di icone del gioco con la M verde e il piccolo Jo giallo fluo simile a

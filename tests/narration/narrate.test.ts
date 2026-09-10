@@ -5,6 +5,7 @@ import type {
   ColumnClearedEvent,
   DiscardMoveEvent,
   HandoffToHumanEvent,
+  PlayingStartedEvent,
   ReplaceMoveEvent,
   RoundClosedEvent,
 } from "../../src/state/types.js";
@@ -153,17 +154,29 @@ describe("narrazione: passaggio di mano e scoperta iniziale", () => {
 describe("narrateScoreQuery", () => {
   it("Deck di un avversario cita il nome fisso", () => {
     expect(renderTokens(narrateScoreQuery("Roberto", 12))).toBe(
-      "Punti dalle carte scoperte, Roberto: totale dodici.",
+      "Punti dalle carte scoperte, Roberto: totale dodici punti.",
     );
   });
 
   it("proprio Deck è self-referenziale, mai il nome libero", () => {
-    expect(renderTokens(narrateScoreQuery(null, 9))).toBe("Punti dalle tue carte scoperte: totale nove.");
+    expect(renderTokens(narrateScoreQuery(null, 9))).toBe("Punti dalle tue carte scoperte: totale nove punti.");
   });
 
   it("i punteggi possono superare il range delle carte", () => {
     expect(renderTokens(narrateScoreQuery("Elena", 23))).toBe(
-      "Punti dalle carte scoperte, Elena: totale ventitré.",
+      "Punti dalle carte scoperte, Elena: totale ventitré punti.",
     );
+  });
+});
+
+describe("narrazione: inizio manche (chi inizia, con quanti punti)", () => {
+  it("avversario che inizia: nome, poi punti scoperti", () => {
+    const event: PlayingStartedEvent = { type: "playing-started", playerIndex: 0, points: 7 };
+    expect(render(event, "dettagliata")).toBe("Inizia Roberto, con sette punti.");
+  });
+
+  it("giocatore umano che inizia: forma alla seconda persona, mai il nome", () => {
+    const event: PlayingStartedEvent = { type: "playing-started", playerIndex: HUMAN_INDEX, points: 0 };
+    expect(render(event, "essenziale")).toBe("Inizi tu, con zero punti.");
   });
 });

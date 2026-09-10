@@ -118,12 +118,12 @@ function tryStartPlayingPhase(state: RoundState): RoundState {
   const n = state.players.length;
   const turnOrder = Array.from({ length: n }, (_, i) => (starter + i) % n);
 
-  return withHandoffIfHuman({
-    ...state,
-    phase: "playing",
-    turnOrder,
-    currentTurnIndex: 0,
-  });
+  const started = pushEvents(
+    { ...state, phase: "playing", turnOrder, currentTurnIndex: 0 },
+    [{ type: "playing-started", playerIndex: starter, points: sumFaceUpValues(state.players[starter]!.grid) }],
+  );
+
+  return withHandoffIfHuman(started);
 }
 
 function applyRevealInitialCard(

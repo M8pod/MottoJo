@@ -66,18 +66,41 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function createLimbAnimator(referenceCardEl: () => HTMLElement | null): LimbAnimator {
+/**
+ * Moltiplicatore sulle durate (sia le attese JS sotto, sia le transizioni
+ * CSS di posizione/opacità — vedi `--limb-move-ms`/`--limb-opacity-ms` in
+ * `src/styles.css`): l'utente ha segnalato il movimento di default troppo
+ * veloce da notare durante il turno di un avversario. "lenta" (default,
+ * `src/setup/appSettings.ts`) rallenta rispetto ai valori originari sotto;
+ * "veloce" li rende leggermente più rapidi di quei valori originari.
+ */
+const SPEED_MULTIPLIER: Record<"lenta" | "veloce", number> = {
+  lenta: 1.6,
+  veloce: 0.9,
+};
+
+export function createLimbAnimator(
+  referenceCardEl: () => HTMLElement | null,
+  speed: "lenta" | "veloce" = "lenta",
+): LimbAnimator {
+  const multiplier = SPEED_MULTIPLIER[speed];
+  const ms = (base: number): number => Math.round(base * multiplier);
+
   const figure = document.createElement("img");
   figure.className = "limb-figure";
   figure.alt = "";
   figure.setAttribute("aria-hidden", "true");
   figure.style.opacity = "0";
+  figure.style.setProperty("--limb-move-ms", `${ms(480)}ms`);
+  figure.style.setProperty("--limb-opacity-ms", `${ms(250)}ms`);
   document.body.appendChild(figure);
 
   const peek = document.createElement("div");
   peek.className = "limb-peek";
   peek.setAttribute("aria-hidden", "true");
   peek.style.opacity = "0";
+  peek.style.setProperty("--limb-move-ms", `${ms(480)}ms`);
+  peek.style.setProperty("--limb-opacity-ms", `${ms(200)}ms`);
   document.body.appendChild(peek);
 
   type QueueItem = { readonly kind: "move"; readonly move: LimbMove } | { readonly kind: "callback"; readonly fn: () => void };
@@ -160,28 +183,28 @@ export function createLimbAnimator(referenceCardEl: () => HTMLElement | null): L
     // verso ciascun bersaglio appena prima di raggiungerlo, non una volta
     // sola all'inizio.
     sourceEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    await sleep(90);
+    await sleep(ms(90));
     const sourcePoint = centerOf(sourceEl);
     figure.style.opacity = "1";
     placeFigureAt(sourcePoint);
-    await sleep(390);
+    await sleep(ms(390));
     move.onArrive?.();
 
     applyPeekContent(move.peek, width);
     positionPeekNearFigureTop();
     peek.style.opacity = "1";
-    await sleep(420);
+    await sleep(ms(420));
 
     const destEl = move.getDestinationEl();
     if (destEl) {
       destEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      await sleep(90);
+      await sleep(ms(90));
       const destPoint = centerOf(destEl);
       placeFigureAt(destPoint);
       positionPeekNearFigureTop();
-      await sleep(480);
+      await sleep(ms(480));
       move.onSettle?.();
-      await sleep(220);
+      await sleep(ms(220));
     } else {
       move.onSettle?.();
     }
@@ -189,7 +212,7 @@ export function createLimbAnimator(referenceCardEl: () => HTMLElement | null): L
     peek.style.opacity = "0";
     placeFigureAt(origin);
     figure.style.opacity = "0";
-    await sleep(480);
+    await sleep(ms(480));
   }
 
   async function run(): Promise<void> {

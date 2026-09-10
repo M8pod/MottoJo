@@ -58,12 +58,19 @@ export interface HandoffToHumanEvent extends BaseEvent {
   readonly type: "handoff-to-human";
 }
 
+/** Chi inizia la manche (dopo che tutti hanno scoperto le due carte iniziali) e con quanti punti scoperti. */
+export interface PlayingStartedEvent extends BaseEvent {
+  readonly type: "playing-started";
+  readonly points: number;
+}
+
 export type RoundEvent =
   | InitialRevealEvent
   | MoveEvent
   | ColumnClearedEvent
   | RoundClosedEvent
-  | HandoffToHumanEvent;
+  | HandoffToHumanEvent
+  | PlayingStartedEvent;
 
 export interface RoundState {
   readonly roundNumber: number;

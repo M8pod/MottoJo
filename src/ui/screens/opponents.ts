@@ -41,7 +41,7 @@ export const renderOpponents: RouteRenderer = (container) => {
       <fieldset>
         <legend>Musica di sottofondo</legend>
         <p>Non ancora disponibile.</p>
-        <ul>
+        <ul class="music-track-list">
           <li>
             <label><input type="radio" name="music-track" disabled /> Traccia 1</label>
             <button type="button" disabled>Anteprima</button>

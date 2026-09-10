@@ -80,6 +80,20 @@ h2 {
   text-align: center;
 }
 
+/* Liste di controlli (pulsanti/link/checkbox), mai di semplice testo: senza
+   `list-style: none` Safari + VoiceOver annuncia "punto elenco" prima di
+   ogni singolo elemento, un passaggio in più inutile prima di sentire
+   l'etichetta del controllo vero (bug segnalato dall'utente). */
+.menu,
+.opponent-list,
+.music-track-list,
+#in-progress-list,
+#completed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -235,6 +249,11 @@ a {
   color: var(--color-card-digit);
 }
 
+.card-cell--removed {
+  cursor: default;
+  visibility: hidden;
+}
+
 .card-cell--band-slate {
   border-color: var(--band-slate);
 }
@@ -388,9 +407,9 @@ kbd.shortcut-hint {
   pointer-events: none;
   z-index: 50;
   transition:
-    left 480ms ease-in-out,
-    top 480ms ease-in-out,
-    opacity 250ms ease-in-out;
+    left var(--limb-move-ms, 480ms) ease-in-out,
+    top var(--limb-move-ms, 480ms) ease-in-out,
+    opacity var(--limb-opacity-ms, 250ms) ease-in-out;
 }
 
 .limb-peek {
@@ -404,9 +423,9 @@ kbd.shortcut-hint {
   align-items: center;
   justify-content: center;
   transition:
-    left 480ms ease-in-out,
-    top 480ms ease-in-out,
-    opacity 200ms ease-in-out;
+    left var(--limb-move-ms, 480ms) ease-in-out,
+    top var(--limb-move-ms, 480ms) ease-in-out,
+    opacity var(--limb-opacity-ms, 200ms) ease-in-out;
 }
 
 .limb-peek--covered {

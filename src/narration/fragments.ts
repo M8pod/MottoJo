@@ -54,10 +54,15 @@ export const PHRASES = {
   il_tuo_deck: "il tuo Deck",
   ora_ascolti: "Ora ascolti",
   hai_pescato: "Hai pescato,",
+  parola_punti: "punti",
+  inizia_manche: "Inizia",
+  inizia_manche_tu: "Inizi tu,",
+  inizio_con: "con",
   // Grafia fonetica apposta per la sintesi vocale: "Jo" letto da una voce
   // italiana rischia una pronuncia errata, "Gio" garantisce il suono giusto.
   motto_jo: "Motto Gioooooo!",
   tocca_a_te: "Tocca a te.",
+  invito_scopri_due: "Scopri due carte del tuo Deck per iniziare.",
 } as const;
 
 export type PhraseKey = keyof typeof PHRASES;

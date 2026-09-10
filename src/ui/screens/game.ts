@@ -172,7 +172,7 @@ export const renderGame: RouteRenderer = (container, params) => {
     return el;
   };
 
-  const limbAnimator = createLimbAnimator(() => cellButtons[0]?.[0] ?? null);
+  const limbAnimator = createLimbAnimator(() => cellButtons[0]?.[0] ?? null, settings.limbAnimationSpeed);
 
   function flashElement(el: Element | null): void {
     if (!el) return;
@@ -353,19 +353,33 @@ export const renderGame: RouteRenderer = (container, params) => {
   function renderOwnGridCell(column: number, row: number): void {
     const humanIdx = humanIndex(match);
     const grid = match.round.players[humanIdx]!.grid;
-    const publicGrid = toPublicGrid(grid);
     const button = cellButtons[column]![row]!;
-    button.setAttribute("aria-label", renderTokens(readPosition(publicGrid, column, row)));
-    const slot = getSlot(grid, column, row);
     button.classList.remove(
       "card-cell--covered",
       "card-cell--face-up",
+      "card-cell--removed",
       "card-cell--band-slate",
       "card-cell--band-ivory",
       "card-cell--band-green",
       "card-cell--band-gold",
       "card-cell--band-maroon",
     );
+    if (column >= grid.length) {
+      // Colonna azzerata da un Motto Jo: la griglia reale si è accorciata,
+      // questa cella (ancora presente nel DOM a 4 colonne fisse) non
+      // corrisponde più a nessuna posizione — va nascosta, mai lasciata con
+      // il valore stantio della colonna che occupava questo slot prima.
+      button.textContent = "";
+      button.removeAttribute("aria-label");
+      button.disabled = true;
+      button.tabIndex = -1;
+      button.classList.add("card-cell--removed");
+      return;
+    }
+    button.disabled = false;
+    const publicGrid = toPublicGrid(grid);
+    button.setAttribute("aria-label", renderTokens(readPosition(publicGrid, column, row)));
+    const slot = getSlot(grid, column, row);
     if (slot.faceUp) {
       button.textContent = String(slot.card.value);
       button.classList.add("card-cell--face-up", `card-cell--band-${valueBand(slot.card.value)}`);
@@ -375,11 +389,21 @@ export const renderGame: RouteRenderer = (container, params) => {
     }
   }
 
+  /** Colonne davvero presenti nel Deck ora (un Motto Jo ne rimuove alcune:
+   * la griglia a 4 colonne del DOM resta fissa, ma oltre questo indice le
+   * celle sono nascoste da `renderOwnGridCell`, quindi mai raggiungibili). */
+  function ownGridColumnCount(): number {
+    return match.round.players[humanIndex(match)]!.grid.length;
+  }
+
   function renderOwnGrid(): void {
     for (let column = 0; column < GRID_COLUMNS; column += 1) {
       for (let row = 0; row < GRID_ROWS; row += 1) {
         renderOwnGridCell(column, row);
       }
+    }
+    if (ownGridColumnCount() > 0 && focusedCell.column >= ownGridColumnCount()) {
+      setFocusedCell(ownGridColumnCount() - 1, focusedCell.row, false);
     }
   }
 
@@ -387,7 +411,7 @@ export const renderGame: RouteRenderer = (container, params) => {
    * Tab alla volta, le frecce spostano il focus dentro la griglia — utile
    * soprattutto con una tastiera Bluetooth esterna. */
   function setFocusedCell(column: number, row: number, moveFocus: boolean): void {
-    const clampedColumn = Math.min(Math.max(column, 0), GRID_COLUMNS - 1);
+    const clampedColumn = Math.min(Math.max(column, 0), Math.max(ownGridColumnCount() - 1, 0));
     const clampedRow = Math.min(Math.max(row, 0), GRID_ROWS - 1);
     cellButtons[focusedCell.column]![focusedCell.row]!.tabIndex = -1;
     focusedCell = { column: clampedColumn, row: clampedRow };
@@ -421,7 +445,7 @@ export const renderGame: RouteRenderer = (container, params) => {
         return;
       case "End":
         event.preventDefault();
-        setFocusedCell(GRID_COLUMNS - 1, row, true);
+        setFocusedCell(ownGridColumnCount() - 1, row, true);
         return;
     }
   }
@@ -465,8 +489,12 @@ export const renderGame: RouteRenderer = (container, params) => {
    * Nascosta quando si ascolta il proprio Deck: "Il tuo Deck" qui sopra è
    * già quella vista, niente da duplicare.
    */
+  function listenGridColumnCount(): number {
+    return currentListenGrid().length;
+  }
+
   function setListenFocusedCell(column: number, row: number, moveFocus: boolean): void {
-    const clampedColumn = Math.min(Math.max(column, 0), GRID_COLUMNS - 1);
+    const clampedColumn = Math.min(Math.max(column, 0), Math.max(listenGridColumnCount() - 1, 0));
     const clampedRow = Math.min(Math.max(row, 0), GRID_ROWS - 1);
     const previous = listenCellButtons[listenFocusedCell.column]?.[listenFocusedCell.row];
     if (previous) previous.tabIndex = -1;
@@ -501,7 +529,7 @@ export const renderGame: RouteRenderer = (container, params) => {
         return;
       case "End":
         event.preventDefault();
-        setListenFocusedCell(GRID_COLUMNS - 1, row, true);
+        setListenFocusedCell(listenGridColumnCount() - 1, row, true);
         return;
     }
   }
@@ -521,6 +549,7 @@ export const renderGame: RouteRenderer = (container, params) => {
         button.setAttribute("role", "gridcell");
         button.tabIndex = column === 0 && row === 0 ? 0 : -1;
         button.addEventListener("click", () => {
+          if (column >= listenGridColumnCount()) return;
           setListenFocusedCell(column, row, false);
           announceExploration(readPosition(currentListenGrid(), column, row));
         });
@@ -537,17 +566,29 @@ export const renderGame: RouteRenderer = (container, params) => {
     for (let column = 0; column < GRID_COLUMNS; column += 1) {
       for (let row = 0; row < GRID_ROWS; row += 1) {
         const button = listenCellButtons[column]![row]!;
-        const slot = grid[column]![row]!;
-        button.setAttribute("aria-label", renderTokens(readPosition(grid, column, row)));
         button.classList.remove(
           "card-cell--covered",
           "card-cell--face-up",
+          "card-cell--removed",
           "card-cell--band-slate",
           "card-cell--band-ivory",
           "card-cell--band-green",
           "card-cell--band-gold",
           "card-cell--band-maroon",
         );
+        if (column >= grid.length) {
+          // Stessa situazione di renderOwnGridCell: Motto Jo dell'avversario
+          // ascoltato, colonna sparita — niente valore stantio in mostra.
+          button.textContent = "";
+          button.removeAttribute("aria-label");
+          button.disabled = true;
+          button.tabIndex = -1;
+          button.classList.add("card-cell--removed");
+          continue;
+        }
+        button.disabled = false;
+        const slot = grid[column]![row]!;
+        button.setAttribute("aria-label", renderTokens(readPosition(grid, column, row)));
         if (slot.faceUp) {
           button.textContent = String(slot.value);
           button.classList.add("card-cell--face-up", `card-cell--band-${valueBand(slot.value)}`);
@@ -556,6 +597,9 @@ export const renderGame: RouteRenderer = (container, params) => {
           button.classList.add("card-cell--covered");
         }
       }
+    }
+    if (listenGridColumnCount() > 0 && listenFocusedCell.column >= listenGridColumnCount()) {
+      setListenFocusedCell(listenGridColumnCount() - 1, listenFocusedCell.row, false);
     }
   }
 
@@ -691,12 +735,16 @@ export const renderGame: RouteRenderer = (container, params) => {
 
   /** "Mescolio" + "disposizione" (spec sezione 4) a ogni inizio manche —
    * mazzo nuovo mescolato e 12 carte distribuite a ciascuno — una volta sola
-   * per manche, mai su una partita ripresa alla manche in cui era rimasta. */
+   * per manche, mai su una partita ripresa alla manche in cui era rimasta.
+   * Subito dopo, l'invito a voce a scoprire le due carte iniziali: senza,
+   * chi non usa VoiceOver non ha alcun indizio su cosa fare a inizio manche
+   * (bug segnalato dall'utente). */
   function maybePlayRoundStartSfx(): void {
     if (sfxPlayedForRound === match.roundNumber) return;
     sfxPlayedForRound = match.roundNumber;
     sfxPlayer.play("mescolio");
     window.setTimeout(() => sfxPlayer.play("disposizione"), 550);
+    narrationPlayer.enqueue([text("invito_scopri_due")]);
   }
 
   function narrateNewEvents(): void {
@@ -838,6 +886,7 @@ export const renderGame: RouteRenderer = (container, params) => {
   function onCellClick(column: number, row: number): void {
     const humanIdx = humanIndex(match);
     const humanGrid = match.round.players[humanIdx]!.grid;
+    if (column >= humanGrid.length) return;
     const slot = getSlot(humanGrid, column, row);
 
     if (match.round.phase === "initial-reveal") {

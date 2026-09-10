@@ -79,21 +79,21 @@ describe("announceScore", () => {
   it("somma solo le carte scoperte, mai quelle coperte", () => {
     const g = grid([[5, undefined, 3]]);
     expect(renderTokens(announceScore(g, { kind: "self" }))).toBe(
-      "Punti dalle tue carte scoperte: totale otto.",
+      "Punti dalle tue carte scoperte: totale otto punti.",
     );
   });
 
   it("Deck di un avversario cita il suo nome fisso", () => {
     const g = grid([[10, 10]]);
     expect(renderTokens(announceScore(g, { kind: "opponent", name: "Martina" }))).toBe(
-      "Punti dalle carte scoperte, Martina: totale venti.",
+      "Punti dalle carte scoperte, Martina: totale venti punti.",
     );
   });
 
   it("una griglia interamente coperta somma zero", () => {
     const g = grid([[undefined, undefined]]);
     expect(renderTokens(announceScore(g, { kind: "self" }))).toBe(
-      "Punti dalle tue carte scoperte: totale zero.",
+      "Punti dalle tue carte scoperte: totale zero punti.",
     );
   });
 });
