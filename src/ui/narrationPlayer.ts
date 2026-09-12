@@ -69,6 +69,16 @@ export interface NarrationPlayer {
   enqueue(tokens: readonly NarrationToken[]): void;
   /** Svuota le frasi ancora in coda (non interrompe il frammento eventualmente già in riproduzione). */
   clear(): void;
+  /**
+   * Accoda una funzione invece di una frase: viene richiamata solo dopo che
+   * tutte le frasi accodate PRIMA di questa chiamata sono finite di
+   * riprodursi (stessa idea di `LimbAnimator.runAfterQueue`). Usato per
+   * riabilitare i controlli di turno solo a narrazione davvero conclusa, non
+   * appena lo stato di gioco è cambiato — altrimenti chi vede può già agire
+   * mentre il narratore sta ancora raccontando i turni IA precedenti (spec,
+   * bug segnalato dopo la prova utente con più avversari).
+   */
+  runAfterQueue(fn: () => void): void;
 }
 
 /**
@@ -89,8 +99,12 @@ export interface NarrationPlayer {
  * evita anche di esaurire i decoder audio del browser su una partita lunga
  * (vedi CLIP_TIMEOUT_MS sopra).
  */
+type QueueItem =
+  | { readonly kind: "phrase"; readonly tokens: readonly NarrationToken[] }
+  | { readonly kind: "callback"; readonly fn: () => void };
+
 export function createNarrationPlayer(getVolume: () => number = () => 1): NarrationPlayer {
-  const queue: (readonly NarrationToken[])[] = [];
+  const queue: QueueItem[] = [];
   let running = false;
   const players: [GainControlledAudio, GainControlledAudio] = [createGainControlledAudio(), createGainControlledAudio()];
   let activeIndex = 0;
@@ -126,18 +140,30 @@ export function createNarrationPlayer(getVolume: () => number = () => 1): Narrat
     running = true;
     while (queue.length > 0) {
       const next = queue.shift()!;
-      await playTokens(next);
+      if (next.kind === "callback") {
+        next.fn();
+      } else {
+        await playTokens(next.tokens);
+      }
     }
     running = false;
   }
 
   return {
     enqueue(tokens) {
-      queue.push(tokens);
+      queue.push({ kind: "phrase", tokens });
       void drain();
     },
     clear() {
       queue.length = 0;
+    },
+    runAfterQueue(fn) {
+      if (queue.length === 0 && !running) {
+        fn();
+        return;
+      }
+      queue.push({ kind: "callback", fn });
+      void drain();
     },
   };
 }

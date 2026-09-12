@@ -53,6 +53,8 @@ export const PHRASES = {
   deck_di: "Deck di",
   il_tuo_deck: "il tuo Deck",
   ora_ascolti: "Ora ascolti",
+  /** Solo in "Partita veloce": unico annuncio del turno di un avversario, al posto del racconto della mossa. */
+  turno_di: "Turno di",
   hai_pescato: "Hai pescato,",
   parola_punti: "punti",
   inizia_manche: "Inizia",

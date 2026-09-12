@@ -8,6 +8,7 @@ import {
   loadLastMatchConfig,
   resolveOpponents,
   saveMatchConfig,
+  setFastMatch,
   toggleOpponent,
   type ConfigStorage,
   type MatchConfig,
@@ -27,6 +28,10 @@ describe("defaultMatchConfig", () => {
     expect(config.opponentIds).toEqual([DEFAULT_OPPONENT.id]);
     expect(DEFAULT_OPPONENT.name).toBe("Roberto");
     expect(DEFAULT_OPPONENT.level).toBe(5);
+  });
+
+  it("parte con la narrazione completa: 'Partita veloce' è una scelta da fare, non il default", () => {
+    expect(defaultMatchConfig().fastMatch).toBe(false);
   });
 });
 
@@ -58,12 +63,12 @@ describe("isValidMatchConfig", () => {
 
 describe("resolveOpponents", () => {
   it("risolve gli id nell'ordine della configurazione, con nome e livello", () => {
-    const config: MatchConfig = { opponentIds: ["roger", "roberto"] };
+    const config: MatchConfig = { opponentIds: ["roger", "roberto"], fastMatch: false };
     expect(resolveOpponents(config).map((o) => o.name)).toEqual(["Roger", "Roberto"]);
   });
 
   it("segnala un id sconosciuto invece di restituire un avversario inventato", () => {
-    expect(() => resolveOpponents({ opponentIds: ["fantasma"] })).toThrow();
+    expect(() => resolveOpponents({ opponentIds: ["fantasma"], fastMatch: false })).toThrow();
   });
 });
 
@@ -74,9 +79,17 @@ describe("loadLastMatchConfig / saveMatchConfig", () => {
 
   it("fa il giro completo salvataggio → lettura", () => {
     const storage = memoryStorage();
-    const config: MatchConfig = { opponentIds: ["elena", "aurora", "marco"] };
+    const config: MatchConfig = { opponentIds: ["elena", "aurora", "marco"], fastMatch: true };
     saveMatchConfig(storage, config);
     expect(loadLastMatchConfig(storage)).toEqual(config);
+  });
+
+  it("una configurazione salvata prima di 'Partita veloce' resta valida, col campo mancante a false", () => {
+    const storage = memoryStorage();
+    // Esattamente ciò che c'è nel localStorage di chi giocava già prima: gli
+    // avversari scelti non vanno persi solo perché è comparso un campo nuovo.
+    storage.setItem("motto-jo:last-match-config", JSON.stringify({ opponentIds: ["elena", "aurora"] }));
+    expect(loadLastMatchConfig(storage)).toEqual({ opponentIds: ["elena", "aurora"], fastMatch: false });
   });
 
   it("con dati corrotti o non validi in memoria, ricade sul default invece di lanciare un errore", () => {
@@ -92,24 +105,40 @@ describe("loadLastMatchConfig / saveMatchConfig", () => {
 
 describe("toggleOpponent", () => {
   it("aggiunge un avversario non selezionato", () => {
-    const result = toggleOpponent({ opponentIds: ["roberto"] }, "elena");
-    expect(result).toEqual({ ok: true, config: { opponentIds: ["roberto", "elena"] } });
+    const result = toggleOpponent({ opponentIds: ["roberto"], fastMatch: false }, "elena");
+    expect(result).toEqual({ ok: true, config: { opponentIds: ["roberto", "elena"], fastMatch: false } });
   });
 
   it("rimuove un avversario già selezionato", () => {
-    const result = toggleOpponent({ opponentIds: ["roberto", "elena"] }, "roberto");
-    expect(result).toEqual({ ok: true, config: { opponentIds: ["elena"] } });
+    const result = toggleOpponent({ opponentIds: ["roberto", "elena"], fastMatch: false }, "roberto");
+    expect(result).toEqual({ ok: true, config: { opponentIds: ["elena"], fastMatch: false } });
+  });
+
+  it("non perde la scelta 'Partita veloce' cambiando gli avversari", () => {
+    const added = toggleOpponent({ opponentIds: ["roberto"], fastMatch: true }, "elena");
+    expect(added).toEqual({ ok: true, config: { opponentIds: ["roberto", "elena"], fastMatch: true } });
+    const removed = toggleOpponent({ opponentIds: ["roberto", "elena"], fastMatch: true }, "roberto");
+    expect(removed).toEqual({ ok: true, config: { opponentIds: ["elena"], fastMatch: true } });
   });
 
   it("blocca la rimozione dell'ultimo avversario rimasto", () => {
-    const result = toggleOpponent({ opponentIds: ["roberto"] }, "roberto");
+    const result = toggleOpponent({ opponentIds: ["roberto"], fastMatch: false }, "roberto");
     expect(result).toEqual({ ok: false, reason: "min" });
   });
 
   it("blocca l'aggiunta oltre il massimo di sette", () => {
     const sevenIds = OPPONENT_ROSTER.slice(0, 7).map((o) => o.id);
     const eighth = OPPONENT_ROSTER[7]!.id;
-    const result = toggleOpponent({ opponentIds: sevenIds }, eighth);
+    const result = toggleOpponent({ opponentIds: sevenIds, fastMatch: false }, eighth);
     expect(result).toEqual({ ok: false, reason: "max" });
+  });
+});
+
+describe("setFastMatch", () => {
+  it("spunta e toglie la spunta senza toccare gli avversari scelti", () => {
+    const config: MatchConfig = { opponentIds: ["roberto", "elena"], fastMatch: false };
+    const fast = setFastMatch(config, true);
+    expect(fast).toEqual({ opponentIds: ["roberto", "elena"], fastMatch: true });
+    expect(setFastMatch(fast, false)).toEqual(config);
   });
 });

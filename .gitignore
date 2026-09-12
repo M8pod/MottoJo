@@ -6,3 +6,7 @@ dist/
 # Bozze/scarti di immagini generate durante la sperimentazione: non fanno
 # parte degli asset finali dell'app (quelli sono in assets/immagini/).
 Immagini da testare/
+
+# Clip audio candidate da ascoltare/tagliare a mano prima di diventare asset
+# veri (quelli sono in assets/audio/): stessa logica della cartella qui sopra.
+Audio da testare/

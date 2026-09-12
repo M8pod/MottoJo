@@ -94,6 +94,7 @@ Roberto, Elena, Lorenzo, Martina, Graziano, Marco, Roger, Alessandro, Aurora.
 | `inizia_manche` | "Inizia" — apre l'annuncio di chi inizia la manche quando è un avversario, si incolla al nome (sezione 3.11). |
 | `inizia_manche_tu` | "Inizi tu," — stessa apertura, forma alla seconda persona quando inizia il giocatore umano (mai il nome, regola trasversale). |
 | `inizio_con` | "con" — si incolla al numero di punti nell'annuncio di chi inizia la manche (sezione 3.11). |
+| `turno_di` | "Turno di" — si incolla al nome dell'avversario di turno. Usato **solo in "Partita veloce"** (sezione 3.13), dove sostituisce del tutto il racconto della mossa; in partita normale non si sente mai. File: `assets/audio/frammenti/connettivi/turno_di.mp3`. |
 
 ### 1.4 Numeri generici (punteggi)
 
@@ -204,10 +205,18 @@ con la convenzione "riga prima, colonna dopo" già fissata.
   Esempio: "Colonna due: riga uno, sette, riga due, coperta, riga tre,
   quattro."
 
-### 3.10 Lettura dell'intero Deck in ascolto, riga per riga (punto 5)
+### 3.10 Lettura dell'intero Deck in ascolto, colonna per colonna (punto 5)
 
-Intestazione ("Deck di {nome}." o "Il tuo Deck.") seguita dalla lettura di
-ogni riga (punto 3.9) in sequenza, dalla prima all'ultima.
+Intestazione ("Deck di {nome}." o "Il tuo Deck.") seguita da ogni colonna in
+sequenza, ma coi soli valori — mai "riga N" ripetuto per ogni carta come in
+3.9 — perché sentire tutto il Deck per intero (fino a 12 carte) è molto più
+lento di leggere una singola riga o colonna: l'utente l'ha segnalato dopo una
+prova con chi vede.
+
+- Colonna: "Colonna {N}: {valore o coperta}, {valore o coperta}, ...,
+  {valore o coperta}."
+  Esempio: "Colonna uno: meno due, coperta, coperta, tre. Colonna due:
+  coperta, coperta, otto, coperta."
 
 ### 3.11 Chi inizia la manche, con quanti punti scoperti
 
@@ -236,3 +245,35 @@ Le funzioni di lettura (3.7-3.10) accettano solo la vista pubblica del Deck
 `src/ai/view.ts`): una carta ancora coperta non porta con sé nessun valore a
 livello di tipo, quindi non può mai trapelare per errore, né per il proprio
 Deck né per quello di un avversario.
+
+### 3.13 "Partita veloce": cosa tace e cosa resta
+
+Scelta della singola partita (`MatchConfig.fastMatch`, spuntabile in "Scegli
+gli avversari"), non impostazione globale: nasce dal fatto che chi vede
+l'animazione dell'arto e il Deck aggiornarsi non ha bisogno del racconto
+mossa per mossa, che è la parte che allunga di più una manche. **Senza la
+spunta (default) non cambia nulla**: è così che chi non vede segue la
+partita, e non va mai penalizzata per far correre chi vede.
+
+Con la spunta:
+
+- **Tace** solo il racconto della mossa di un avversario (3.1 e 3.2). Al suo
+  posto, un annuncio unico di turno: "Turno di {nome}." (frammento
+  `turno_di` + nome). Non passa da 3.7 ("Ora ascolti...") come il cambio
+  vista automatico normale: lì sarebbe un doppione, e l'annuncio di turno
+  viene detto anche quando la vista era già sul Deck di quell'avversario
+  (nessun cambio da annunciare, ma il turno va comunque detto).
+- **Tace** anche l'"Ora ascolti il tuo Deck." del ritorno automatico alla
+  propria vista: resta il "Tocca a te." di 3.5, che dice già tutto.
+- **Restano invariati**: Motto Jo e colonna annullata (3.3), chiusura della
+  manche (3.4), "Tocca a te." (3.5), chi inizia la manche (3.11), "Hai
+  pescato, {valore}." del proprio turno, tutti i pulsanti di esplorazione e
+  di punteggio a richiesta (3.6-3.10), tutti i suoni e tutta l'animazione
+  degli arti.
+- **Il registro scritto riceve tutto comunque**, anche le mosse non
+  pronunciate: non costa tempo di ascolto (è nella tendina "Narrazione
+  scritta", chiusa di default) e resta consultabile al volo.
+
+Il pulsante manuale "Cambia Deck in ascolto" annuncia sempre "Ora ascolti..."
+anche in partita veloce: è una domanda esplicita dell'utente, merita sempre
+una risposta.

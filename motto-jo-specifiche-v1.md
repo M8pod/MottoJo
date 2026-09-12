@@ -1,5 +1,185 @@
 # Motto Jo — Specifiche v1
 
+## Nota di ripresa lavori (aggiornata 2026-09-12, sessione seconda prova utente con chi vede)
+
+L'utente ha fatto testare il gioco a una persona vedente e segnalato 5
+richieste in un colpo solo. Trattate così:
+
+1. **Numeri "due" e "cinque" con accento spagnolo — non risolto da me,
+   candidati generati per la scelta finale dell'utente.** Il narratore
+   legge male solo questi due frammenti (`assets/audio/frammenti/numeri/
+   num_due.mp3`, `num_cinque.mp3`). Generati con ElevenLabs (stessa voce
+   "Presentatore" `QZ4YsXHfl8zZccXKHAFZ`, stesso modello
+   `eleven_multilingual_v2`, stesso flow "Motto Jo - Connettivi"
+   `Pmzm4prI9apbNgPMVNNL`) quattro file candidati e consegnati all'utente
+   via file diretto (non nel repo, l'utente sceglie/taglia lui): il numero
+   isolato con virgola attaccata ("due,"/"cinque,", stessa prosodia con cui
+   compare sempre nella narrazione vera, seguito da una pausa) e lo stesso
+   numero dentro una frase di contesto ("Luca mangia due pesci."/"Luca
+   mangia cinque pesche." — corretto "due pesce" in "due pesci" per
+   l'accordo plurale, il suono della parola "due" non cambia).
+
+   Nessuno dei due giri è andato bene ("ancora non vanno bene"). Al terzo
+   giro è stata l'idea dell'utente a funzionare: il numero in fondo a una
+   frase che lo fa cadere naturalmente, "ci sono delle pere, marco ne prende
+   due," / "...cinque," (virgola finale compresa, testo suo alla lettera),
+   tre prese a testa per avere scelta. **Risolto**: l'utente ha ritagliato a
+   mano le parole dalle prese che preferiva e le ha messe in `Audio da
+   testare/` come "due approvato.mp3" (0,42s) e "cinque approvato.mp3"
+   (0,57s); da lì sono state copiate su
+   `assets/audio/frammenti/numeri/num_due.mp3` e `num_cinque.mp3` (stessi
+   nomi file, nessun cambio di codice). Nota per il futuro: i numeri
+   composti ("ventidue", "cinquanta"...) sono registrazioni a sé (sezione
+   1.4 di `motto-jo-frasi-narrazione.md`), quindi non sono toccati da questa
+   sostituzione — se l'accento spagnolo dà fastidio anche lì, sono altri
+   file, ma si sentono solo nei totali di punteggio, non a ogni carta.
+
+2. **Narrazione troppo lenta rispetto al gioco vero e proprio — chi vede
+   poteva già agire mentre il narratore raccontava ancora i turni IA
+   precedenti — risolto strutturalmente.** Causa: `advanceUntilHumanOrRoundOver`
+   (`src/play/match.ts`) fa girare TUTTI i turni IA fino al prossimo turno
+   umano in un colpo solo e sincrono; lo stato di gioco (quindi i controlli
+   di turno) era già pronto per la mossa umana successiva mentre voce
+   narrante e animazione degli arti stavano ancora smaltendo la coda dei
+   turni precedenti in modo asincrono — indipendentemente da quale delle
+   due code fosse più lenta dell'altra in quel momento (l'utente aveva
+   notato anche che l'animazione finiva sempre prima della voce).
+   Soluzione: nuovo stato `awaitingPlayback` in `src/ui/screens/game.ts`,
+   vero da subito dopo un `dispatch()` che ha prodotto eventi da
+   raccontare/animare, falso solo quando SIA `narrationPlayer` SIA
+   `limbAnimator` hanno davvero finito di riprodurre quanto accodato per
+   quel turno (`afterPlaybackIdle`, che usa il nuovo `runAfterQueue` di
+   `narrationPlayer` — prima esisteva solo su `limbAnimator` — e quello già
+   esistente su `limbAnimator`). Le due code si aspettano **in sequenza**,
+   prima gli arti e poi la voce, non in parallelo: la coda delle animazioni
+   può accodare narrazione mentre scorre (in "Partita veloce" è proprio da lì
+   che parte "Turno di {nome}.", punto 7), quindi guardare la coda della voce
+   una volta sola all'inizio la troverebbe vuota e sbloccherebbe troppo
+   presto. Mentre `awaitingPlayback` è vero: pulsanti
+   mazzo/scarti disabilitati (`renderTableArea`), nessuna azione di turno
+   proposta (`renderTurnActions` mostra "Attendi: il narratore sta ancora
+   raccontando i turni precedenti."), `onDrawDeck`/`onTakeDiscard` bloccati
+   anche da tastiera. Non tocca la fase di scoperta iniziale (mai narrata,
+   nessuna coda da attendere) né il turno umano stesso (che non genera
+   narrazione bloccante per sé). Non verificato dal vivo in un browser
+   (stessa limitazione delle sessioni precedenti con `claude-in-chrome`):
+   `npm run typecheck` e `npm test` puliti, fiducia riposta nella lettura
+   attenta del codice.
+
+3. **Narrazione scritta troppo in basso nella pagina, spostava lì il focus
+   VoiceOver — ora in una tendina espandibile, più recente in alto.**
+   Sezione "Narrazione" (`src/ui/screens/game.ts`) ora un `<details>`
+   collassato di default con `<summary>Narrazione scritta (più recente in
+   alto)</summary>`: chi non la vuole seguire non la apre mai, chi ne ha
+   bisogno al volo la espande. Rimosso `aria-live="polite"` dal contenitore
+   (la voce narrante recita già tutto, il testo è solo un doppione
+   consultabile a richiesta — un'altra causa probabile dello spostamento
+   indesiderato del focus di lettura VoiceOver, oltre alla posizione in
+   fondo pagina). `appendLog` ora inserisce ogni nuova riga in cima
+   (`insertBefore`, non più `appendChild`), non in fondo. Stile minimo
+   aggiunto in `src/styles.css` (`#narration-details > summary`, area di
+   tocco ≥44px).
+
+4. **Pulsante "Somma punti" a volte silenzioso — in realtà funzionava
+   sempre, solo senza nulla da annunciare.** La regione `aria-live="polite"`
+   `#exploration-output` non viene ri-annunciata da uno screen reader se il
+   testo scritto è identico al precedente (es. "Somma punti" premuto due
+   volte di fila con lo stesso totale, o due letture consecutive dello
+   stesso valore) — capita anche con "Leggi riga/colonna/tutto il Deck",
+   non solo con "Somma punti", stesso meccanismo sotto. Corretto
+   `announceExploration` (`src/ui/screens/game.ts`): svuota il testo, poi
+   lo riscrive un istante dopo (`window.setTimeout`, 50ms) anche quando è
+   identico al precedente, così lo screen reader lo tratta sempre come
+   contenuto nuovo.
+
+5. **"Leggi l'intero Deck" troppo lento — passato da riga per riga a
+   colonna per colonna, coi soli valori.** `readWholeDeck`
+   (`src/exploration/read.ts`) leggeva ogni carta con l'etichetta di
+   posizione completa ("colonna N" ripetuto per ogni carta di ogni riga,
+   "riga N: colonna 1, valore, colonna 2, valore, ..." per tre righe): tanti
+   frammenti audio incollati per 12 carte. Ora una colonna alla volta, "colonna
+   N:" detto una sola volta seguito dai soli valori in ordine (o "coperta"),
+   es. "Colonna uno: meno due, coperta, coperta, tre. Colonna due: coperta,
+   coperta, otto, coperta." — esattamente il formato proposto dall'utente.
+   `readRow`/`readColumn` (pulsanti "Leggi una riga"/"Leggi una colonna",
+   mai lamentati come lenti) invariati. Test aggiornati
+   (`tests/exploration/read.test.ts`).
+
+`npm run typecheck` pulito. `npm test`: 197/197 puliti (196 precedenti + 1
+nuovo per `readWholeDeck` senza etichette di riga).
+
+### Seconda parte della stessa sessione: "Partita veloce"
+
+6. **Clip audio candidate spostate nel progetto.** L'utente le ha chieste su
+   disco perché da iPad non può lavorare sui file: nuova cartella `Audio da
+   testare/` alla radice (stessa convenzione di `Immagini da testare/`, e
+   come quella aggiunta a `.gitignore`: sono bozze da ascoltare/tagliare, non
+   asset finali). Contiene i 4 candidati del punto 1 con nomi parlanti
+   (`candidato_due__solo_numero.mp3`, `candidato_due__frase_luca_pesci.mp3`,
+   e i due omologhi per "cinque") più una copia del nuovo frammento
+   `turno_di` del punto 7, per poterlo ascoltare senza cercarlo dentro
+   `assets/`.
+
+7. **"Partita veloce" — nuova scelta spuntabile in "Scegli gli avversari".**
+   Richiesta dell'utente dopo la prova con chi vede: la narrazione
+   mossa-per-mossa degli avversari è la parte che allunga di più una manche
+   ed è superflua per chi vede l'arto muoversi e il Deck aggiornarsi.
+   Implementata come proprietà **della singola partita**, non come
+   impostazione globale: nuovo campo `fastMatch` in `MatchConfig`
+   (`src/setup/matchConfig.ts`) con migrazione tollerante in
+   `loadLastMatchConfig` (una configurazione salvata prima non si perde, il
+   campo mancante vale `false` — stessa convenzione di `limbAnimationSpeed`
+   in `appSettings.ts`), nuovo `setFastMatch`, e `toggleOpponent` che ora
+   conserva il campo invece di ricostruire l'oggetto da zero. La scelta
+   viaggia con la partita salvata (`SavedMatch.config`), quindi una partita
+   ripresa mantiene il ritmo con cui è stata iniziata; `game.ts` la legge da
+   `saved.config` (non da `loadLastMatchConfig`) proprio per questo.
+   Casella + testo di aiuto collegato con `aria-describedby` in
+   `src/ui/screens/opponents.ts`, nel nuovo gruppo "Ritmo della partita".
+
+   Cosa tace e cosa resta (dettaglio completo in
+   `motto-jo-frasi-narrazione.md`, nuova sezione 3.13): tace solo il racconto
+   della mossa di un avversario, sostituito da "Turno di {nome}."; tace
+   l'"Ora ascolti il tuo Deck." del ritorno automatico alla propria vista
+   (il "Tocca a te." dice già tutto). Restano Motto Jo, chiusura manche,
+   "Tocca a te.", chi inizia la manche, "Hai pescato", tutti i pulsanti di
+   esplorazione, tutti i suoni e tutta l'animazione degli arti. Il registro
+   scritto riceve tutto comunque, anche le mosse non pronunciate (non costa
+   tempo di ascolto, è nella tendina chiusa del punto 3). Il pulsante manuale
+   "Cambia Deck in ascolto" annuncia sempre, anche in partita veloce.
+
+   Dettagli di implementazione in `src/ui/screens/game.ts`:
+   `switchListening` ora prende un oggetto opzioni (`playSound`,
+   `announceTarget`) invece del solo booleano del suono; l'annuncio di turno
+   è accodato **fuori** da `switchListening` apposta, così si sente anche
+   quando la vista era già sul Deck di quell'avversario e il cambio non
+   avviene (il guard `isSameListenTarget` uscirebbe subito, lasciando quel
+   turno del tutto muto — l'unico annuncio che c'è in questa modalità). La
+   voce tace solo sugli eventi `move` (`narrateMove` non narra mai il turno
+   umano, quindi un `move` narrabile è sempre di un avversario).
+
+8. **Nuovo frammento audio `turno_di` ("Turno di")** — l'unico asset nuovo
+   richiesto dal punto 7. Generato con ElevenLabs (stessa voce
+   "Presentatore" `QZ4YsXHfl8zZccXKHAFZ`, `eleven_multilingual_v2`, flow
+   `Pmzm4prI9apbNgPMVNNL`, una sola generazione), stesso taglio automatico
+   del silenzio iniziale/finale degli altri connettivi (ffmpeg-static, già
+   in `node_modules` dalla sessione precedente, non in `package.json`):
+   1.02s → 0.63s, in linea con i frammenti simili già sul disco ("Deck di"
+   0.65s, "con" 0.73s), quindi nessun taglio sulla parola. In
+   `assets/audio/frammenti/connettivi/turno_di.mp3`, coperto dal test che
+   pretende un file esistente per ogni chiave di `PHRASES`. **Non ancora
+   ascoltato dall'utente**: una copia è in `Audio da testare/` per questo.
+
+`npm run typecheck` pulito. `npm test`: 201/201 (197 precedenti + 4 nuovi su
+`fastMatch`: default a `false`, migrazione di una configurazione salvata
+senza il campo, `toggleOpponent` che lo conserva, `setFastMatch`). Aggiornati
+anche i letterali `MatchConfig` nei test esistenti
+(`tests/play/match.test.ts`, `tests/play/matchStorage.test.ts`,
+`tests/setup/matchConfig.test.ts`). **Nulla di tutto questo è stato provato
+dal vivo in un browser** (stessa limitazione nota con `claude-in-chrome`):
+serve una partita vera dell'utente, con e senza la spunta, per confermare
+ritmo e annunci.
+
 ## Nota di ripresa lavori (aggiornata 2026-09-10, sessione bug post-prova utente)
 
 L'utente ha giocato una partita vera e segnalato 7 problemi/migliorie in un
@@ -1308,6 +1488,14 @@ Regola generale: suono breve prima, poi con piccolo ritardo la vocalizzazione.
   fascia di difficoltà dichiarata accanto al nome, non modificabile.
 - Minimo un avversario obbligatorio, massimo sette selezionabili: se si esce
   da questo intervallo, blocco con avviso vocale chiaro.
+- Casella "Partita veloce" (aggiunta dopo una prova con chi vede): senza
+  spunta tutto resta come sempre (narrazione completa, il modo in cui chi non
+  vede segue la partita); con la spunta il narratore annuncia solo "Turno di
+  {nome}." al posto del racconto mossa per mossa degli avversari, tenendo
+  suoni, animazione degli arti, registro scritto e tutti gli annunci
+  importanti. Vale per la singola partita (viaggia con la partita salvata),
+  non è un'impostazione globale — dettaglio in
+  `motto-jo-frasi-narrazione.md`, sezione 3.13.
 - Musica di sottofondo opzionale, fino a tre brani selezionabili, ciascuno
   con anteprima ascoltabile.
 - Nota per v2: scelta tra mazzo classico e mazzo con carte nuove, da

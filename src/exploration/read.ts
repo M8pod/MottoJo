@@ -89,11 +89,27 @@ export function readColumn(grid: PublicGrid, column: number): NarrationToken[] {
   ];
 }
 
-/** Pulsante "Leggi l'intero Deck in ascolto": intestazione, poi ogni riga in sequenza. */
+/**
+ * Pulsante "Leggi l'intero Deck in ascolto": intestazione, poi ogni colonna in
+ * sequenza, coi soli valori (mai "riga N" ripetuto per ogni carta) — es.
+ * "Colonna uno: meno due, coperta, coperta, tre. Colonna due: coperta,
+ * coperta, otto, coperta." Molto più rapido da ascoltare di una lettura riga
+ * per riga con etichetta di posizione completa su ogni carta (12 carte, prima
+ * versione), segnalato dall'utente come troppo lento.
+ */
 export function readWholeDeck(grid: PublicGrid, listener: DeckListener): NarrationToken[] {
   const header = [...headerFor(listener), pause(".")];
-  const rows = Array.from({ length: rowCount(grid) }, (_, r) => readRow(grid, r));
-  return [...header, ...rows.flat()];
+  const columns = grid.map((column, c) => [
+    text("pos_colonna"),
+    number(spoken(c)),
+    pause(":"),
+    ...joinWithPause(
+      column.map((slot) => valueOrCoperta(slot)),
+      ",",
+    ),
+    pause("."),
+  ]);
+  return [...header, ...columns.flat()];
 }
 
 /** Pulsante "Cambia Deck in ascolto": annuncia chi si sta ascoltando ora. */

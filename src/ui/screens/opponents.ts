@@ -1,6 +1,6 @@
 import { OPPONENT_ROSTER } from "../../ai/index.js";
 import { difficultyBand } from "../../setup/difficulty.js";
-import { loadLastMatchConfig, saveMatchConfig, toggleOpponent } from "../../setup/matchConfig.js";
+import { loadLastMatchConfig, saveMatchConfig, setFastMatch, toggleOpponent } from "../../setup/matchConfig.js";
 import type { RouteRenderer } from "../router.js";
 
 const BLOCK_MESSAGES = {
@@ -37,6 +37,25 @@ export const renderOpponents: RouteRenderer = (container) => {
       <fieldset>
         <legend>Avversari (da uno a sette)</legend>
         <ul class="opponent-list">${rows}</ul>
+      </fieldset>
+      <fieldset>
+        <legend>Ritmo della partita</legend>
+        <ul class="opponent-list">
+          <li>
+            <label>
+              <input type="checkbox" id="fast-match" aria-describedby="fast-match-help" ${config.fastMatch ? "checked" : ""} />
+              Partita veloce: il narratore annuncia solo di chi è il turno
+            </label>
+          </li>
+        </ul>
+        <p id="fast-match-help">
+          Con "Partita veloce" il narratore non racconta più mossa per mossa quello
+          che fanno gli avversari virtuali: dice solo "Turno di" e il nome di chi
+          gioca. Restano i suoni, il movimento del braccio/zampa dell'avversario, il
+          registro scritto della narrazione e tutti gli annunci importanti (Motto Jo,
+          ultimo turno, "Tocca a te"). Lasciala senza spunta per seguire la partita
+          solo ascoltando.
+        </p>
       </fieldset>
       <fieldset>
         <legend>Musica di sottofondo</legend>
@@ -79,5 +98,18 @@ export const renderOpponents: RouteRenderer = (container) => {
       saveMatchConfig(window.localStorage, outcome.config);
       status.textContent = "";
     });
+  });
+
+  const fastMatchCheckbox = container.querySelector<HTMLInputElement>("#fast-match");
+  if (!fastMatchCheckbox) throw new Error("Markup della schermata avversari incompleto");
+  fastMatchCheckbox.addEventListener("change", () => {
+    config = setFastMatch(config, fastMatchCheckbox.checked);
+    saveMatchConfig(window.localStorage, config);
+    // Vale dalla prossima partita iniziata, non su una ripresa: la scelta
+    // viaggia con la partita salvata (`SavedMatch.config`), non è
+    // un'impostazione globale.
+    status.textContent = fastMatchCheckbox.checked
+      ? "Partita veloce attiva: vale dalla prossima partita che inizi."
+      : "Partita veloce disattivata: narrazione completa dalla prossima partita che inizi.";
   });
 };

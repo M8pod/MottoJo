@@ -370,12 +370,21 @@ kbd.shortcut-hint {
 /* --- Log di narrazione: doppia funzione, sottotitoli per chi vede e
    legge invece di ascoltare, e cronologia scorrevole per chi vuole
    ripassare cosa è successo. --- */
+#narration-details > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0.4rem 0.2rem;
+}
+
 .narration-log {
   max-height: 12rem;
   overflow-y: auto;
   background: var(--color-surface-1);
   border-radius: var(--radius-control);
   padding: 0.6rem 0.9rem;
+  margin-top: 0.4rem;
 }
 
 .narration-log p {

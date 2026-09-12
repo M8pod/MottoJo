@@ -17,7 +17,7 @@ import { seededRng, makeCard, makeGrid } from "../helpers.js";
 
 describe("buildMatchPlayers", () => {
   it("mette sempre l'umano per primo, poi gli avversari scelti nell'ordine dato", () => {
-    const players = buildMatchPlayers({ opponentIds: ["roger", "roberto"] });
+    const players = buildMatchPlayers({ opponentIds: ["roger", "roberto"], fastMatch: false });
     expect(players.map((p) => p.id)).toEqual([HUMAN_ID, "roger", "roberto"]);
     expect(players[0]!.isHuman).toBe(true);
     expect(players[1]!.isHuman).toBe(false);
@@ -25,16 +25,16 @@ describe("buildMatchPlayers", () => {
   });
 
   it("usa il nome personalizzato dell'umano quando fornito, altrimenti il default", () => {
-    const custom = buildMatchPlayers({ opponentIds: ["roger"] }, "Marta");
+    const custom = buildMatchPlayers({ opponentIds: ["roger"], fastMatch: false }, "Marta");
     expect(custom[0]!.name).toBe("Marta");
-    const fallback = buildMatchPlayers({ opponentIds: ["roger"] });
+    const fallback = buildMatchPlayers({ opponentIds: ["roger"], fastMatch: false });
     expect(fallback[0]!.name).toBe("Tu");
   });
 });
 
 describe("startMatch", () => {
   it("scopre già le due carte iniziali di ogni IA ma lascia l'umano tutto coperto", () => {
-    const match = startMatch({ opponentIds: ["roberto", "elena"] }, seededRng(1));
+    const match = startMatch({ opponentIds: ["roberto", "elena"], fastMatch: false }, seededRng(1));
     expect(match.round.phase).toBe("initial-reveal");
 
     const human = match.round.players[0]!;
@@ -52,7 +52,7 @@ describe("startMatch", () => {
 
 describe("peekTopOfDeck + applyAction (coerenza pesca)", () => {
   it("nel caso comune (mazzo non vuoto) la carta piazzata è sempre quella sbirciata", () => {
-    const match = startMatch({ opponentIds: ["roberto"] }, seededRng(2));
+    const match = startMatch({ opponentIds: ["roberto"], fastMatch: false }, seededRng(2));
     // Serve la fase "playing": l'umano scopre le sue due carte iniziali (l'IA le ha già scoperte in startMatch).
     const playing = applyAction(
       applyAction(match.round, { type: "REVEAL_INITIAL_CARD", playerIndex: 0, column: 0, row: 0 }),
@@ -88,7 +88,7 @@ describe("peekTopOfDeck + applyAction (coerenza pesca)", () => {
 
 describe("simulazione di una manche completa", () => {
   it("arriva a round-over e produce un riepilogo punteggi coerente", () => {
-    let match: MatchState = startMatch({ opponentIds: ["roger"] }, seededRng(5));
+    let match: MatchState = startMatch({ opponentIds: ["roger"], fastMatch: false }, seededRng(5));
 
     // L'umano scopre le sue due carte iniziali: questo fa scattare da solo
     // (tramite tryStartPlayingPhase dentro applyAction) l'inizio della fase di gioco.

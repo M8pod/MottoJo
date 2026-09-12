@@ -13,7 +13,7 @@ import {
 import type { DeckListener } from "../../exploration/types.js";
 import { NUMBER_WORDS } from "../../narration/fragments.js";
 import { narrateEvent, type NarrationContext, type Verbosity } from "../../narration/narrate.js";
-import { number, pause, renderTokens, text, type NarrationToken } from "../../narration/tokens.js";
+import { name, number, pause, renderTokens, text, type NarrationToken } from "../../narration/tokens.js";
 import { ICONS } from "../icons.js";
 import { createLimbAnimator, type LimbMove } from "../limbAnimation.js";
 import { limbImageForOpponent } from "../limbAssets.js";
@@ -105,6 +105,15 @@ export const renderGame: RouteRenderer = (container, params) => {
     saved = upsertMatch(window.localStorage, createSavedMatch(config, match), match);
   }
 
+  /**
+   * "Partita veloce" (`MatchConfig.fastMatch`): scelta della singola partita,
+   * non impostazione globale — viaggia con la partita salvata, quindi una
+   * partita ripresa mantiene il ritmo con cui è stata iniziata. `=== true`
+   * anche per le partite salvate prima che questo campo esistesse (lì è
+   * `undefined`, quindi narrazione completa come prima).
+   */
+  const fastMatch = saved.config.fastMatch === true;
+
   let turnUi: TurnUiState = { kind: "none" };
   let listening: ListenTarget = { kind: "self" };
   // Non si ri-narrano gli eventi già accaduti prima di questa apertura della schermata (partita ripresa): solo quelli nuovi da qui in poi.
@@ -115,6 +124,18 @@ export const renderGame: RouteRenderer = (container, params) => {
   let listenCellButtons: HTMLButtonElement[][] = [];
   let listenFocusedCell: { column: number; row: number } = { column: 0, row: 0 };
   let sfxPlayedForRound = existing ? match.roundNumber : -1;
+  /**
+   * Vero da subito dopo un `dispatch()` che ha prodotto eventi da
+   * raccontare/animare, fino a quando SIA la voce narrante SIA l'animazione
+   * degli arti hanno davvero finito di riprodurli. Il motore (`applyHumanAction`,
+   * `src/play/match.ts`) fa girare tutti i turni IA fino al prossimo turno
+   * umano in un colpo solo e sincrono: senza questo blocco, chi vede
+   * potrebbe già ripescare/piazzare mentre il narratore sta ancora
+   * raccontando i turni precedenti (segnalato da un test con più
+   * avversari) — indipendentemente da quale delle due code (voce o
+   * animazione) sia più lenta dell'altra in quel momento.
+   */
+  let awaitingPlayback = false;
   const narrationPlayer = createNarrationPlayer(() => loadAppSettings(window.localStorage).volumes.narration / 100);
   const sfxPlayer = createSfxPlayer(() => loadAppSettings(window.localStorage).volumes.sfx / 100);
   const musicPlayer = createMusicPlayer(
@@ -158,8 +179,11 @@ export const renderGame: RouteRenderer = (container, params) => {
       </section>
 
       <section aria-labelledby="narration-heading">
-        <h2 id="narration-heading">Narrazione</h2>
-        <div id="narration-log" class="narration-log" aria-live="polite"></div>
+        <h2 id="narration-heading" class="visually-hidden">Narrazione</h2>
+        <details id="narration-details">
+          <summary>Narrazione scritta (più recente in alto)</summary>
+          <div id="narration-log" class="narration-log"></div>
+        </details>
       </section>
 
       <p><a href="#/" class="icon-link">${ICONS.home}<span>Torna alla schermata iniziale</span></a></p>
@@ -173,6 +197,24 @@ export const renderGame: RouteRenderer = (container, params) => {
   };
 
   const limbAnimator = createLimbAnimator(() => cellButtons[0]?.[0] ?? null, settings.limbAnimationSpeed);
+
+  /**
+   * Richiama `fn` quando non resta più nulla da riprodurre: né animazioni
+   * degli arti, né voce narrante — vedi `awaitingPlayback` sopra.
+   *
+   * Prima gli arti, POI la voce, in sequenza e non in parallelo, perché la
+   * coda delle animazioni può accodare narrazione mentre scorre: in "Partita
+   * veloce" l'annuncio "Turno di {nome}." parte proprio da lì, quindi
+   * guardare la coda della voce una volta sola all'inizio la troverebbe vuota
+   * e sbloccherebbe i controlli troppo presto. Richiedendola di nuovo a
+   * animazioni concluse si aspetta sempre l'ultima delle due, in entrambe le
+   * modalità.
+   */
+  function afterPlaybackIdle(fn: () => void): void {
+    limbAnimator.runAfterQueue(() => {
+      narrationPlayer.runAfterQueue(fn);
+    });
+  }
 
   function flashElement(el: Element | null): void {
     if (!el) return;
@@ -245,15 +287,32 @@ export const renderGame: RouteRenderer = (container, params) => {
     $("#turn-prompt").textContent = text;
   }
 
+  /**
+   * Scrive l'esito nella regione aria-live "#exploration-output" e lo mette
+   * in coda alla voce narrante. Svuota il testo un istante prima di
+   * riscriverlo, anche quando il nuovo esito è identico al precedente
+   * (es. "Somma punti" premuto due volte di fila con lo stesso totale): uno
+   * screen reader non ri-annuncia una regione live il cui testo non è
+   * cambiato, e senza questo accorgimento il pulsante "a volte non
+   * funziona" (segnalato dall'utente) — in realtà funzionava sempre, solo
+   * senza nulla da annunciare quando il testo coincideva col precedente.
+   */
   function announceExploration(tokens: readonly NarrationToken[]): void {
-    $("#exploration-output").textContent = renderTokens(tokens);
+    const output = $("#exploration-output");
+    output.textContent = "";
+    const rendered = renderTokens(tokens);
+    window.setTimeout(() => {
+      output.textContent = rendered;
+    }, 50);
     narrationPlayer.enqueue(tokens);
   }
 
+  /** Aggiunge in cima al registro scritto (più recente in alto, come richiesto): chi lo consulta al volo trova subito l'ultima azione senza scorrere tutto. */
   function appendLog(text: string): void {
     const p = document.createElement("p");
     p.textContent = text;
-    $("#narration-log").appendChild(p);
+    const log = $("#narration-log");
+    log.insertBefore(p, log.firstChild);
   }
 
   function currentListenerIndex(): number {
@@ -283,15 +342,24 @@ export const renderGame: RouteRenderer = (container, params) => {
    * Deck in ascolto" sia — spec, sezione 5 — dal cambio automatico di vista
    * quando tocca a un avversario virtuale. `playSound: false` solo per il
    * passaggio di mano all'umano, che ha un suono dedicato e ha la priorità
-   * sul suono di cambio Deck (spec, sezione 4).
+   * sul suono di cambio Deck (spec, sezione 4). `announceTarget: false` solo
+   * in "Partita veloce" sui cambi automatici: lì il turno è annunciato con
+   * "Turno di {nome}." (o, per il passaggio di mano, dal "Tocca a te."
+   * dell'evento), e ripetere "Ora ascolti il Deck di..." sarebbe un doppione
+   * proprio nella modalità nata per accorciare. Il pulsante manuale annuncia
+   * sempre: è una domanda esplicita dell'utente, merita sempre risposta.
    */
-  function switchListening(target: ListenTarget, playSound: boolean = true): void {
+  function switchListening(
+    target: ListenTarget,
+    options: { readonly playSound?: boolean; readonly announceTarget?: boolean } = {},
+  ): void {
+    const { playSound = true, announceTarget = true } = options;
     if (isSameListenTarget(listening, target)) return;
     listening = target;
     if (playSound) sfxPlayer.play("cambio_deck");
     renderListenTarget();
     renderListenGridSection();
-    narrationPlayer.enqueue(announceListenTarget(currentListener()));
+    if (announceTarget) narrationPlayer.enqueue(announceListenTarget(currentListener()));
   }
 
   function onCycleListen(): void {
@@ -624,7 +692,8 @@ export const renderGame: RouteRenderer = (container, params) => {
   function renderTableArea(): void {
     const el = $("#table-area");
     const topDiscard = match.round.discard[0];
-    const canAct = !match.finished && match.round.phase !== "initial-reveal" && turnUi.kind === "none";
+    const canAct =
+      !match.finished && match.round.phase !== "initial-reveal" && turnUi.kind === "none" && !awaitingPlayback;
     const canTakeDiscard = canAct && Boolean(topDiscard);
     const deckCount = match.round.deck.length;
 
@@ -693,6 +762,16 @@ export const renderGame: RouteRenderer = (container, params) => {
           ? "Scopri due carte del tuo Deck: scegli una cella qualsiasi."
           : "Scopri un'altra carta del tuo Deck.",
       );
+      actions.innerHTML = "";
+      return;
+    }
+
+    if (awaitingPlayback) {
+      // Il turno IA è già stato calcolato ma il narratore/l'animazione lo
+      // stanno ancora raccontando (vedi `awaitingPlayback` sopra): i
+      // controlli restano bloccati finché non hanno finito, altrimenti chi
+      // vede potrebbe agire prima di sentire cosa è appena successo.
+      setTurnPrompt("Attendi: il narratore sta ancora raccontando i turni precedenti.");
       actions.innerHTML = "";
       return;
     }
@@ -774,7 +853,17 @@ export const renderGame: RouteRenderer = (container, params) => {
           // intermedi (stesso bug di "torna a sé troppo presto", qui per il
           // cambio nell'altro verso — trovato allo stesso modo).
           const playerIndex = event.playerIndex;
-          limbAnimator.runAfterQueue(() => switchListening({ kind: "opponent", playerIndex }));
+          limbAnimator.runAfterQueue(() => {
+            switchListening({ kind: "opponent", playerIndex }, { announceTarget: !fastMatch });
+            // In "Partita veloce" questo è l'unico annuncio a voce del turno
+            // di un avversario: fuori da `switchListening` apposta, così si
+            // sente anche quando la vista era già sul suo Deck (l'utente
+            // c'era passato a mano) e quel cambio vista non avviene — un
+            // turno del tutto silenzioso sarebbe peggio del doppione.
+            if (fastMatch) {
+              narrationPlayer.enqueue([text("turno_di"), name(match.players[playerIndex]!.name), pause(".")]);
+            }
+          });
         }
       } else if (event.type === "column-cleared") {
         sfxPlayer.play("colonna_fanfara");
@@ -789,15 +878,23 @@ export const renderGame: RouteRenderer = (container, params) => {
         // ha priorità sul "Cambio Deck" (spec sezione 4): si torna alla
         // propria vista in silenzio, poi suona solo questo.
         limbAnimator.runAfterQueue(() => {
-          switchListening({ kind: "self" }, false);
+          switchListening({ kind: "self" }, { playSound: false, announceTarget: !fastMatch });
           sfxPlayer.play("passaggio_mano");
         });
       }
 
       const tokens = narrateEvent(event, ctx);
       if (tokens) {
+        // Il registro scritto riceve tutto anche in "Partita veloce": non
+        // costa tempo di ascolto (è in una tendina, chiusa di default) e
+        // resta consultabile al volo per chi vuole sapere cosa è appena
+        // successo. È solo la voce a tacere sulla giocata in sé — un evento
+        // "move" narrabile è sempre di un avversario, il turno umano non si
+        // narra mai (`narrateMove`, src/narration/narrate.ts).
         appendLog(renderTokens(tokens));
-        narrationPlayer.enqueue(tokens);
+        if (!(fastMatch && event.type === "move")) {
+          narrationPlayer.enqueue(tokens);
+        }
       }
       if (enqueueLimbAnimationForEvent(event)) anyLimbMove = true;
     }
@@ -838,9 +935,15 @@ export const renderGame: RouteRenderer = (container, params) => {
     narrateNewEvents();
     renderOwnGrid();
     renderListenGridSection();
-    renderTurnActions();
     renderMatchStatus();
+    awaitingPlayback = true;
+    renderTurnActions();
     renderTableArea();
+    afterPlaybackIdle(() => {
+      awaitingPlayback = false;
+      renderTurnActions();
+      renderTableArea();
+    });
     saved = upsertMatch(window.localStorage, saved, match);
   }
 
@@ -850,7 +953,7 @@ export const renderGame: RouteRenderer = (container, params) => {
   }
 
   function onDrawDeck(): void {
-    if (match.round.phase === "initial-reveal" || match.finished || turnUi.kind !== "none") return;
+    if (match.round.phase === "initial-reveal" || match.finished || turnUi.kind !== "none" || awaitingPlayback) return;
     const peek = peekTopOfDeck(match.round, Math.random);
     turnUi = { kind: "decide-deck-card", peek };
     sfxPlayer.play("pesca_mazzo");
@@ -863,7 +966,13 @@ export const renderGame: RouteRenderer = (container, params) => {
   }
 
   function onTakeDiscard(): void {
-    if (match.round.phase === "initial-reveal" || match.finished || turnUi.kind !== "none" || !match.round.discard[0])
+    if (
+      match.round.phase === "initial-reveal" ||
+      match.finished ||
+      turnUi.kind !== "none" ||
+      awaitingPlayback ||
+      !match.round.discard[0]
+    )
       return;
     turnUi = { kind: "placing-forced" };
     sfxPlayer.play("presa_scarti");

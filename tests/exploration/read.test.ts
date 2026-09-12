@@ -48,12 +48,16 @@ describe("readColumn", () => {
 });
 
 describe("readWholeDeck", () => {
-  it("proprio Deck: intestazione self-referenziale, poi ogni riga", () => {
+  it("proprio Deck: intestazione self-referenziale, poi ogni colonna coi soli valori", () => {
     const g = grid([[1, 2], [3, 4]]);
     const rendered = renderTokens(readWholeDeck(g, { kind: "self" }));
-    expect(rendered.startsWith("Il tuo Deck.")).toBe(true);
-    expect(rendered).toContain("Riga uno: colonna uno, uno, colonna due, tre.");
-    expect(rendered).toContain("Riga due: colonna uno, due, colonna due, quattro.");
+    expect(rendered).toBe("Il tuo Deck. Colonna uno: uno, due. Colonna due: tre, quattro.");
+  });
+
+  it("riporta 'coperta' per le carte non scoperte, senza etichetta di riga", () => {
+    const g = grid([[7, undefined, 4]]);
+    const rendered = renderTokens(readWholeDeck(g, { kind: "self" }));
+    expect(rendered).toBe("Il tuo Deck. Colonna uno: sette, coperta, quattro.");
   });
 
   it("Deck di un avversario: intestazione col nome fisso", () => {
