@@ -31,7 +31,9 @@ export interface RoundResult {
 /**
  * Calcola i punteggi di fine manche. Se chi ha chiuso il turno non ha il
  * punteggio più basso in solitaria (un altro giocatore ha un punteggio
- * uguale o inferiore), il suo punteggio di manche viene raddoppiato.
+ * uguale o inferiore), il suo punteggio di manche viene raddoppiato,
+ * ma solo se è positivo (regola ufficiale Skyjo): uno zero o un punteggio
+ * negativo non si raddoppiano, altrimenti chi chiude ci guadagnerebbe.
  */
 export function computeRoundScores(
   grids: readonly PlayerDeck[],
@@ -47,10 +49,11 @@ export function computeRoundScores(
   const isSoleLowest =
     closerScore === minScore && rawScores.filter((s) => s === minScore).length === 1;
 
+  const closerDoubled = !isSoleLowest && closerScore > 0;
   const scores = rawScores.map((score, i) =>
-    i === closingPlayerIndex && !isSoleLowest ? score * 2 : score,
+    i === closingPlayerIndex && closerDoubled ? score * 2 : score,
   );
-  const doubled = rawScores.map((_, i) => i === closingPlayerIndex && !isSoleLowest);
+  const doubled = rawScores.map((_, i) => i === closingPlayerIndex && closerDoubled);
 
   return { scores, doubled };
 }
