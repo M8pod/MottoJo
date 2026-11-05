@@ -1262,14 +1262,17 @@ coerenti con Motto Chess (verde panno, oro, bordeaux scuro).
   coperto.
 - Regola speciale: se in una colonna tutte e tre le carte sono scoperte e hanno
   lo stesso valore, la colonna si scarta interamente e non conta più nel
-  punteggio. Le colonne restanti slittano a sinistra per rioccupare lo spazio
+  punteggio. Le sue tre carte vanno sulla pila degli scarti (regola ufficiale
+  Skyjo, dal 5/11/2026): l'ultima resta in cima e il giocatore successivo la
+  può prendere. Le colonne restanti slittano a sinistra per rioccupare lo spazio
   lasciato libero: la griglia resta sempre compatta e le posizioni si
   rinumerano di conseguenza.
 - Il turno (manche) finisce quando un giocatore scopre tutta la sua griglia:
   tutti gli altri giocano un ultimo turno, poi si sommano i punti.
 - Se chi ha chiuso il turno non ha il punteggio più basso in solitaria di
   quella manche (cioè un altro giocatore ha un punteggio uguale o inferiore),
-  il suo punteggio di manche viene raddoppiato.
+  il suo punteggio di manche viene raddoppiato, ma solo se è positivo
+  (regola ufficiale Skyjo, dal 5/11/2026): zero o negativo restano invariati.
 - I punti si sommano manche dopo manche. La partita finisce quando qualcuno
   raggiunge o supera 100 punti totali; vince chi ha il totale più basso.
 
