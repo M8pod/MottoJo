@@ -196,6 +196,8 @@ describe("regola colonna uguale durante una mossa", () => {
     );
     expect(next.players[0]!.grid).toHaveLength(1);
     expect(next.players[0]!.grid[0]!.map((s) => s.card.value)).toEqual([1, 2, 3]);
+    // Le tre carte della colonna eliminata finiscono in cima agli scarti, sopra l'8 scartato
+    expect(next.discard.map((c) => c.value)).toEqual([5, 5, 5, 8]);
   });
 });
 
