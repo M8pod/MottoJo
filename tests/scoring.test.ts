@@ -42,6 +42,22 @@ describe("computeRoundScores", () => {
   });
 });
 
+describe("computeRoundScores - raddoppio solo se positivo", () => {
+  it("non raddoppia chi chiude con punteggio negativo anche se non è il più basso", () => {
+    const grids = [makeGrid([[-1, -1, 0]]), makeGrid([[-2, -2, -2]])];
+    const result = computeRoundScores(grids, 0);
+    expect(result.scores).toEqual([-2, -6]);
+    expect(result.doubled).toEqual([false, false]);
+  });
+
+  it("non raddoppia chi chiude con punteggio zero", () => {
+    const grids = [makeGrid([[0, 0, 0]]), makeGrid([[-1, 0, 0]])];
+    const result = computeRoundScores(grids, 0);
+    expect(result.scores).toEqual([0, -1]);
+    expect(result.doubled).toEqual([false, false]);
+  });
+});
+
 describe("addRoundScores / isGameOver / getWinners", () => {
   it("somma i punteggi di manche ai totali", () => {
     expect(addRoundScores([10, 20], [5, 0])).toEqual([15, 20]);
