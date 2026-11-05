@@ -29,3 +29,11 @@ router.register("/matches", renderMatches);
 router.register("/extra", renderExtra);
 
 router.start();
+
+// Service worker (solo nella versione pubblicata): rende il gioco installabile
+// sulla schermata Home e giocabile senza connessione dopo la prima apertura.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
+  });
+}
