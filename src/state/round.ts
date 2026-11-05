@@ -164,8 +164,14 @@ function advanceAfterMove(state: RoundState, movingPlayerIndex: number): RoundSt
     value: grid[column]![0]!.card.value,
   }));
 
+  // Regola ufficiale Skyjo: le carte di una colonna eliminata vanno sugli
+  // scarti (scoperte); l'ultima resta in cima e il giocatore successivo la
+  // può prendere. Indice 0 = cima della pila.
+  const clearedCards = clearedColumns.flatMap((column) => grid[column]!.map((slot) => slot.card));
+  const discard = clearedCards.length > 0 ? [...clearedCards.reverse(), ...state.discard] : state.discard;
+
   let next: RoundState = pushEvents(
-    { ...state, players: withPlayerGrid(state.players, movingPlayerIndex, clearedGrid) },
+    { ...state, discard, players: withPlayerGrid(state.players, movingPlayerIndex, clearedGrid) },
     clearEvents,
   );
 
