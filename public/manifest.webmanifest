@@ -1,0 +1,17 @@
+{
+  "name": "Motto Jo",
+  "short_name": "Motto Jo",
+  "description": "Audiogioco di carte accessibile, con supporto VoiceOver.",
+  "lang": "it",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#221f1c",
+  "theme_color": "#221f1c",
+  "icons": [
+    { "src": "assets/immagini/icone/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/immagini/icone/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/immagini/icone/icona-master-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}
