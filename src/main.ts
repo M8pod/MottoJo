@@ -37,3 +37,17 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
   });
 }
+
+// Statistiche d'uso anonime (Umami Cloud, server in UE, senza cookie: niente
+// banner da accettare). Un solo "sito" Umami raccoglie Motto Jo e Motto Chess,
+// distinti dal percorso (/MottoJo, /MottoChess). Solo nella versione
+// pubblicata (data-domains), e caricato dopo l'avvio: se un blocco pubblicità
+// o l'assenza di rete lo fermano, il gioco non se ne accorge.
+if (import.meta.env.PROD) {
+  const stats = document.createElement("script");
+  stats.defer = true;
+  stats.src = "https://cloud.umami.is/script.js";
+  stats.dataset.websiteId = "0cc5679f-6c47-4d64-b05e-7f56f951375e";
+  stats.dataset.domains = "m8pod.github.io";
+  document.head.appendChild(stats);
+}
