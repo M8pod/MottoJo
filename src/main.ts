@@ -49,5 +49,18 @@ if (import.meta.env.PROD) {
   stats.src = "https://cloud.umami.is/script.js";
   stats.dataset.websiteId = "0cc5679f-6c47-4d64-b05e-7f56f951375e";
   stats.dataset.domains = "m8pod.github.io";
+  // Installazioni come web app: "avvio-app-installata" a ogni apertura dalla
+  // schermata Home (display-mode standalone; navigator.standalone è il caso
+  // iPhone); "installazione" quando il browser conferma l'installazione
+  // (solo Chrome/Android/computer: Safari su iPhone non lo segnala).
+  type Umami = { track: (name: string) => void };
+  const umami = () => (window as unknown as { umami?: Umami }).umami;
+  const isInstalledLaunch =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true;
+  stats.addEventListener("load", () => {
+    if (isInstalledLaunch) umami()?.track("avvio-app-installata");
+  });
+  window.addEventListener("appinstalled", () => umami()?.track("installazione"));
   document.head.appendChild(stats);
 }
